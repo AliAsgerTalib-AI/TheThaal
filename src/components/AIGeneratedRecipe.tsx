@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Heart, FileDown, Bookmark, Info } from 'lucide-react';
+import { X, Heart, FileDown, Bookmark, ChefHat, ShoppingCart } from 'lucide-react';
 import { Recipe } from '../types';
+import { CookingModeModal } from './CookingModeModal';
+import { ShoppingListModal } from './ShoppingListModal';
 
 interface AIGeneratedRecipeProps {
   recipe: Recipe | null;
@@ -10,6 +13,9 @@ interface AIGeneratedRecipeProps {
 }
 
 export function AIGeneratedRecipe({ recipe, onClose, onSave, isSaved }: AIGeneratedRecipeProps) {
+  const [isCookingMode, setIsCookingMode] = useState(false);
+  const [isShoppingList, setIsShoppingList] = useState(false);
+
   const handlePrint = () => {
     const container = document.getElementById('ai-recipe-container');
     if (!container) return;
@@ -45,6 +51,7 @@ export function AIGeneratedRecipe({ recipe, onClose, onSave, isSaved }: AIGenera
   };
 
   return (
+    <>
     <AnimatePresence>
       {recipe && (
         <motion.div
@@ -125,11 +132,11 @@ export function AIGeneratedRecipe({ recipe, onClose, onSave, isSaved }: AIGenera
               </div>
 
               <div className="flex flex-wrap gap-4 mt-8 print:hidden relative z-30">
-                <button 
+                <button
                   onClick={onSave}
                   disabled={isSaved}
                   className={`px-8 py-4 text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${
-                    isSaved 
+                    isSaved
                     ? 'bg-green-600/20 text-green-500 border border-green-500/30 cursor-default'
                     : 'bg-brand-gold text-brand-bg hover:bg-white'
                   }`}
@@ -137,7 +144,19 @@ export function AIGeneratedRecipe({ recipe, onClose, onSave, isSaved }: AIGenera
                   {isSaved ? <Heart className="w-4 h-4 fill-current" /> : <Bookmark className="w-4 h-4" />}
                   {isSaved ? 'Saved to My Recipes' : 'Save to My Recipes'}
                 </button>
-                <button 
+                <button
+                  onClick={() => setIsCookingMode(true)}
+                  className="px-8 py-4 glass-card text-brand-gold text-[10px] font-bold uppercase tracking-widest hover:border-brand-gold/50 transition-all flex items-center gap-2"
+                >
+                  <ChefHat className="w-4 h-4" /> Start Cooking
+                </button>
+                <button
+                  onClick={() => setIsShoppingList(true)}
+                  className="px-8 py-4 glass-card text-brand-gold text-[10px] font-bold uppercase tracking-widest hover:border-brand-gold/50 transition-all flex items-center gap-2"
+                >
+                  <ShoppingCart className="w-4 h-4" /> Shopping List
+                </button>
+                <button
                   onClick={handlePrint}
                   className="px-8 py-4 glass-card text-brand-gold text-[10px] font-bold uppercase tracking-widest hover:border-brand-gold/50 transition-all flex items-center gap-2 cursor-pointer"
                 >
@@ -149,5 +168,18 @@ export function AIGeneratedRecipe({ recipe, onClose, onSave, isSaved }: AIGenera
         </motion.div>
       )}
     </AnimatePresence>
+
+    <AnimatePresence>
+      {recipe && isCookingMode && (
+        <CookingModeModal recipe={recipe} onClose={() => setIsCookingMode(false)} />
+      )}
+    </AnimatePresence>
+
+    <AnimatePresence>
+      {recipe && isShoppingList && (
+        <ShoppingListModal recipe={recipe} onClose={() => setIsShoppingList(false)} />
+      )}
+    </AnimatePresence>
+    </>
   );
 }

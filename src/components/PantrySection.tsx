@@ -6,6 +6,7 @@ import { COMMON_INGREDIENTS, CUISINE_PROFILES, FLAVOR_PROFILES } from '../consta
 interface PantrySectionProps {
   selectedPantry: string[];
   toggleIngredient: (ing: string) => void;
+  onClearSelection: () => void;
   userIngredients: string[];
   addCustomIngredient: (ing: string) => void;
   selectedServings: number | null;
@@ -24,6 +25,7 @@ interface PantrySectionProps {
 export function PantrySection({
   selectedPantry,
   toggleIngredient,
+  onClearSelection,
   userIngredients,
   addCustomIngredient,
   selectedServings,
@@ -93,8 +95,8 @@ export function PantrySection({
         </form>
 
         {selectedPantry.length > 0 && (
-          <button 
-            onClick={() => toggleIngredient('')} // Not ideal, but we'll fix the logic in App.tsx or use a clear prop
+          <button
+            onClick={onClearSelection}
             className="mt-6 text-[10px] font-bold text-brand-gold/60 hover:text-brand-gold uppercase tracking-[0.2em] flex items-center gap-2"
           >
             Clear Selection <X className="w-3 h-3" />

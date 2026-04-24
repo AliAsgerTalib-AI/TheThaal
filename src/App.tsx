@@ -23,22 +23,20 @@ export default function App() {
 
   const [selectedPantry, setSelectedPantry] = useState<string[]>([]);
   const [userIngredients, setUserIngredients] = useState<string[]>([]);
-  const [selectedServings, setSelectedServings] = useState<number | null>(null);
-  const [selectedFlavor, setSelectedFlavor] = useState<string | null>(null);
+  const [selectedServings, setSelectedServings] = useState<number | null>(2);
+  const [selectedFlavor, setSelectedFlavor] = useState<string | null>('Zaikedaar');
   const [selectedCuisine, setSelectedCuisine] = useState<string | null>('Traditional');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>('Medium');
 
   const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }), []);
 
   const toggleIngredient = (ing: string) => {
-    if (ing === '') {
-      setSelectedPantry([...userIngredients]);
-      return;
-    }
     setSelectedPantry(prev =>
       prev.includes(ing) ? prev.filter(i => i !== ing) : [...prev, ing]
     );
   };
+
+  const clearIngredientSelection = () => setSelectedPantry([]);
 
   const handleAddUserRecipe = (recipe: Recipe) => {
     setUserRecipes(prev => [recipe, ...prev]);
@@ -46,8 +44,8 @@ export default function App() {
   };
 
   const handleResetFilters = () => {
-    setSelectedServings(null);
-    setSelectedFlavor(null);
+    setSelectedServings(2);
+    setSelectedFlavor('Zaikedaar');
     setSelectedDifficulty('Medium');
     setSelectedPantry([...userIngredients]);
     setSelectedCuisine('Traditional');
@@ -146,9 +144,10 @@ export default function App() {
       />
 
       <main className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 py-32">
-        <PantrySection 
+        <PantrySection
           selectedPantry={selectedPantry}
           toggleIngredient={toggleIngredient}
+          onClearSelection={clearIngredientSelection}
           userIngredients={userIngredients}
           addCustomIngredient={(ing) => {
             setUserIngredients(prev => [...prev, ing]);
