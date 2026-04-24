@@ -11,9 +11,37 @@ interface AIGeneratedRecipeProps {
 
 export function AIGeneratedRecipe({ recipe, onClose, onSave, isSaved }: AIGeneratedRecipeProps) {
   const handlePrint = () => {
-    // Explicitly focus and print to ensure it works in iframes
-    window.focus();
-    window.print();
+    const container = document.getElementById('ai-recipe-container');
+    if (!container) return;
+
+    const styles = Array.from(document.querySelectorAll('style'))
+      .map(el => el.innerHTML).join('\n');
+    const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+      .map(el => el.outerHTML).join('\n');
+
+    const popup = window.open('', '_blank', 'width=900,height=700');
+    if (!popup) {
+      window.focus();
+      window.print();
+      return;
+    }
+
+    popup.document.open();
+    popup.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${recipe?.title ?? 'Recipe'} – Thaali Traditions</title>
+  ${links}
+  <style>${styles}</style>
+  <style>body { background: white; margin: 0; padding: 0; } #ai-recipe-container { max-width: 900px; margin: 0 auto; }</style>
+</head>
+<body>
+  ${container.outerHTML}
+  <script>window.onload = function() { window.print(); };<\/script>
+</body>
+</html>`);
+    popup.document.close();
   };
 
   return (
