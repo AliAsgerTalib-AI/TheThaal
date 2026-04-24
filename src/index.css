@@ -70,15 +70,20 @@
 }
 
 @media print {
+  @page {
+    margin: 1cm;
+  }
   body {
     background: white !important;
     color: black !important;
+    margin: 0;
+    padding: 0;
   }
-  nav, footer, .print\:hidden {
+  nav, footer, .print\:hidden, .no-print {
     display: none !important;
   }
-  .glass-card {
-    background: white !important;
+  .glass-card, .glass-card::before {
+    background: transparent !important;
     border: none !important;
     backdrop-filter: none !important;
     box-shadow: none !important;
@@ -86,11 +91,15 @@
   #ai-recipe-container {
     background: white !important;
     color: black !important;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    margin: 0;
-    padding: 2cm;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
   }
+  /* Force text colors for print readability */
+  .text-brand-gold { color: #DAA520 !important; }
+  .text-brand-cream { color: #000000 !important; }
+  .text-white\/30, .text-white\/60, .text-white\/70, .text-white\/80 { color: #333333 !important; }
+  .border-y, .border-t, .border-b, .border { border-color: #eeeeee !important; }
 }

@@ -25,8 +25,8 @@ export default function App() {
   const [userIngredients, setUserIngredients] = useState<string[]>([]);
   const [selectedServings, setSelectedServings] = useState<number | null>(null);
   const [selectedFlavor, setSelectedFlavor] = useState<string | null>(null);
-  const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
+  const [selectedCuisine, setSelectedCuisine] = useState<string | null>('Traditional');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>('Medium');
 
   const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }), []);
 
@@ -48,9 +48,9 @@ export default function App() {
   const handleResetFilters = () => {
     setSelectedServings(null);
     setSelectedFlavor(null);
-    setSelectedDifficulty(null);
+    setSelectedDifficulty('Medium');
     setSelectedPantry([]);
-    setSelectedCuisine(null);
+    setSelectedCuisine('Traditional');
   };
 
   const generateAIDish = async () => {
@@ -59,7 +59,7 @@ export default function App() {
     setIsGenerating(true);
     try {
       const flavorDesc = FLAVOR_PROFILES.find(f => f.name === selectedFlavor)?.desc || "Traditional Bohra flavors";
-      const prompt = `Act as a 30 year experienced Bohra cusine and cook expert. Create a ${selectedCuisine === 'Fusion' ? 'modern Bohra Fusion' : 'Traditional Dawoodi Bohra'} dish recipe based on these specific criteria:
+      const prompt = `Act as a 30 year experienced Bohra cuisine and cook expert. Create a ${selectedCuisine === 'Fusion' ? 'modern Bohra Fusion' : 'Traditional Dawoodi Bohra'} dish recipe based on these specific criteria:
         Ingredients available: ${selectedPantry.join(', ')}
         Group Capacity: ${selectedServings || 4} guests
         Culinary Direction: ${selectedCuisine || 'Traditional'} (Note: If Fusion, blend Bohra techniques/flavors with another global cuisine)
@@ -68,7 +68,8 @@ export default function App() {
 
         Requirements:
         - The dish must feel authentic to Bohra culture or be a smart Bohra fusion.
-        - Include 'heritage' which is a soulful story about the dish's roots.
+        - 'ingredients': Each item MUST include precise quantities (e.g., "500g mutton", "2 tbsp Ghee").
+        - 'heritage': A detailed, soulful narrative about the dish's historical roots, its significance in the Bohra "Thaal", or specific cultural anecdotes and family traditions associated with it. Aim for a "living history" feel.
         - RETURN ONLY VALID JSON. DO NOT INCLUDE ANY MARKDOWN WRAPPERS OR EXTRA TEXT.`;
 
       const response = await ai.models.generateContent({
@@ -168,10 +169,10 @@ export default function App() {
         <AIGeneratedRecipe 
           recipe={aiGeneratedRecipe} 
           onClose={() => setAiGeneratedRecipe(null)}
+          isSaved={aiGeneratedRecipe ? userRecipes.some(r => r.id === aiGeneratedRecipe.id) : false}
           onSave={() => {
             if (aiGeneratedRecipe) {
               handleAddUserRecipe(aiGeneratedRecipe);
-              setAiGeneratedRecipe(null);
             }
           }}
         />

@@ -6,10 +6,13 @@ interface AIGeneratedRecipeProps {
   recipe: Recipe | null;
   onClose: () => void;
   onSave: () => void;
+  isSaved?: boolean;
 }
 
-export function AIGeneratedRecipe({ recipe, onClose, onSave }: AIGeneratedRecipeProps) {
+export function AIGeneratedRecipe({ recipe, onClose, onSave, isSaved }: AIGeneratedRecipeProps) {
   const handlePrint = () => {
+    // Explicitly focus and print to ensure it works in iframes
+    window.focus();
     window.print();
   };
 
@@ -20,13 +23,14 @@ export function AIGeneratedRecipe({ recipe, onClose, onSave }: AIGeneratedRecipe
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="mt-16 overflow-hidden print:m-0"
+          className="mt-16 overflow-hidden print:m-0 relative z-20"
         >
           <div id="ai-recipe-container" className="glass-card p-10 md:p-20 border-brand-gold/30 bg-brand-gold/5 relative print:bg-white print:text-black print:p-8 print:border-none print:shadow-none">
-            <div className="absolute top-8 right-8 print:hidden">
+            <div className="absolute top-8 right-8 print:hidden z-30">
               <button 
                 onClick={onClose}
                 className="p-4 glass-card text-brand-gold/50 hover:text-brand-gold rounded-full transition-colors"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -92,16 +96,22 @@ export function AIGeneratedRecipe({ recipe, onClose, onSave }: AIGeneratedRecipe
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-4 mt-8 print:hidden">
+              <div className="flex flex-wrap gap-4 mt-8 print:hidden relative z-30">
                 <button 
                   onClick={onSave}
-                  className="px-8 py-4 bg-brand-gold text-brand-bg text-[10px] font-bold uppercase tracking-widest hover:bg-white transition-all flex items-center gap-2"
+                  disabled={isSaved}
+                  className={`px-8 py-4 text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${
+                    isSaved 
+                    ? 'bg-green-600/20 text-green-500 border border-green-500/30 cursor-default'
+                    : 'bg-brand-gold text-brand-bg hover:bg-white'
+                  }`}
                 >
-                  <Bookmark className="w-4 h-4" /> Save to My Recipes
+                  {isSaved ? <Heart className="w-4 h-4 fill-current" /> : <Bookmark className="w-4 h-4" />}
+                  {isSaved ? 'Saved to My Recipes' : 'Save to My Recipes'}
                 </button>
                 <button 
                   onClick={handlePrint}
-                  className="px-8 py-4 glass-card text-brand-gold text-[10px] font-bold uppercase tracking-widest hover:border-brand-gold/50 transition-all flex items-center gap-2"
+                  className="px-8 py-4 glass-card text-brand-gold text-[10px] font-bold uppercase tracking-widest hover:border-brand-gold/50 transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <FileDown className="w-4 h-4" /> Create a PDF
                 </button>
