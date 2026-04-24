@@ -32,10 +32,10 @@ export default function App() {
 
   const toggleIngredient = (ing: string) => {
     if (ing === '') {
-      setSelectedPantry([]);
+      setSelectedPantry([...userIngredients]);
       return;
     }
-    setSelectedPantry(prev => 
+    setSelectedPantry(prev =>
       prev.includes(ing) ? prev.filter(i => i !== ing) : [...prev, ing]
     );
   };
@@ -49,18 +49,19 @@ export default function App() {
     setSelectedServings(null);
     setSelectedFlavor(null);
     setSelectedDifficulty('Medium');
-    setSelectedPantry([]);
+    setSelectedPantry([...userIngredients]);
     setSelectedCuisine('Traditional');
   };
 
   const generateAIDish = async () => {
-    if (selectedPantry.length === 0) return;
+    const allIngredients = [...new Set([...selectedPantry, ...userIngredients])];
+    if (allIngredients.length === 0) return;
 
     setIsGenerating(true);
     try {
       const flavorDesc = FLAVOR_PROFILES.find(f => f.name === selectedFlavor)?.desc || "Traditional Bohra flavors";
       const prompt = `Act as a 30 year experienced Bohra cuisine and cook expert. Create a ${selectedCuisine === 'Fusion' ? 'modern Bohra Fusion' : 'Traditional Dawoodi Bohra'} dish recipe based on these specific criteria:
-        Ingredients available: ${selectedPantry.join(', ')}
+        Ingredients available: ${allIngredients.join(', ')}
         Group Capacity: ${selectedServings || 4} guests
         Culinary Direction: ${selectedCuisine || 'Traditional'} (Note: If Fusion, blend Bohra techniques/flavors with another global cuisine)
         Bohra Flavor Profile: ${selectedFlavor || 'Zaikedaar'} (${flavorDesc})

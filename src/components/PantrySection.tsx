@@ -218,9 +218,9 @@ export function PantrySection({
             <div className="flex flex-wrap gap-4">
               <button 
                 onClick={onGenerate}
-                disabled={isGenerating || selectedPantry.length === 0}
+                disabled={isGenerating || (selectedPantry.length === 0 && userIngredients.length === 0)}
                 className={`px-12 py-5 bg-brand-gold text-brand-bg text-xs tracking-mega font-bold uppercase transition-all flex items-center gap-3 shadow-[0_0_30px_rgba(218,165,32,0.3)] ${
-                  (isGenerating || selectedPantry.length === 0) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white'
+                  (isGenerating || (selectedPantry.length === 0 && userIngredients.length === 0)) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white'
                 }`}
               >
                 {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
