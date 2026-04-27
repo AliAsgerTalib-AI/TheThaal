@@ -1,13 +1,13 @@
 export interface Recipe {
   id: string;
   title: string;
-  category: 'Meethas' | 'Khadan' | 'Main' | 'Salad';
+  category: 'Meethas' | 'Kharaas' | 'Jamaan' | 'Salad';
   description: string;
   image: string;
   time: string;
   servings: string;
   servingCount: number;
-  flavorProfile: 'Khatt-Mitth' | 'Zaikedaar' | 'Kurkura' | 'Masaledaar' | 'Malai' | 'Dhungaar' | 'Kharas';
+  flavorProfile: 'Khatta-Mitth' | 'Zaikedaar' | 'Kurkura' | 'Masaledaar' | 'Malai' | 'Dhungaar' | 'Kharas';
   cuisineType: 'Traditional' | 'Fusion';
   difficulty: 'Easy' | 'Medium' | 'Advanced';
   ingredients: string[];
@@ -23,11 +23,11 @@ export interface ThaalPlan {
   guestCount: number;
   dishes: {
     sequence: number;
-    type: 'Meethas' | 'Khara' | 'Main' | 'Salad/Side';
+    type: 'Meethas' | 'Kharaas' | 'Jamaan' | 'Salad/Side';
     platingPhysics: {
       location: string;
       temp: string;
-      vesselMaterial: 'Kansi' | 'Steel' | 'Ceramic' | 'Silver-Plated';
+      vesselMaterial: 'Kansa' | 'Steel' | 'Ceramic' | 'Silver-Plated';
     };
     chefIntuition: string;
     mastersFix: string;
@@ -78,10 +78,10 @@ export interface ThaalPlan {
     theLeaver: string;
     strategicMoat: string;
   };
-  independentReview: {
+  masterChefAudit: {
     brutalTake: string;
     greatestWeakness: string;
-    enhancementValue: string;
+    strategicEnhancement: string;
     contrarianTake: string;
   };
   safetyAudit: {
@@ -105,10 +105,18 @@ export interface ThaalPlan {
     timeRelative: string; // e.g., "T - 2 hours"
     action: string;
     sensoryCue: string;
+    coordinationNote: string;
+    atmosphericTrigger: string;
     dishId: string;
-    role: 'Chef' | 'Host';
+    role: 'Chef' | 'Host' | 'Server';
   }[];
   pairingNotes: string;
+  condiments: {
+    name: string;
+    type: 'Pickle' | 'Chutney' | 'Raita' | 'Murabba';
+    description: string;
+    pairingLogic: string;
+  }[];
   complementarySuggestions: {
     dishType: string;
     suggestedFlavor: string;
@@ -118,11 +126,63 @@ export interface ThaalPlan {
     ritual: string;
     instruction: string;
   }[];
+  combinationsAudit: {
+    selectionLogic: string;
+    allowedSubstitutions: {
+      original: string;
+      substitute: string;
+      reason: string;
+    }[];
+    forbiddenSubstitutions: {
+      dish: string;
+      forbidden: string;
+      consequence: string;
+    }[];
+    tasteSymphony: string;
+    textureMapping: string;
+    palateModulation: string;
+    flavorProgression: {
+      course: string;
+      transition: string;
+      palateEffect: string;
+    }[];
+    efficiencySecrets: string;
+    costLevers: string;
+    efficiencyAnalysis: string;
+    costOptimization: string;
+  };
   chefSecret: string;
   atmosphere: {
     lighting: string;
     scent: string;
     vibe: string;
+  };
+  masterLogistics: {
+    ingredients: {
+      item: string;
+      baseQuantity: string;
+      scaledQuantity: string;
+      emergencyBuffer: string;
+      totalProcurement: string;
+      purpose: string;
+    }[];
+    equipment: {
+      utensil: string;
+      quantity: number;
+      useCase: string;
+    }[];
+    infrastructure: {
+      stovesNeeded: number;
+      kitchenStaff: number;
+      servingStaff: number;
+      powerRequirements?: string;
+    };
+    thaalCutlery: {
+      item: string;
+      quantityPerThaal: number;
+      totalNeeded: number;
+      wastageBuffer: number;
+    }[];
   };
 }
 

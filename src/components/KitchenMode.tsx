@@ -34,14 +34,11 @@ export function KitchenMode({ recipe, onClose }: KitchenModeProps) {
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] bg-brand-bg flex flex-col"
-    >
+    <div className="min-h-screen bg-brand-bg relative pt-32 flex flex-col">
+      <div className="fixed inset-0 immersive-gradient opacity-10 pointer-events-none" />
+      
       {/* Header */}
-      <header className="p-6 md:p-10 border-b border-white/10 flex items-center justify-between">
+      <header className="p-6 md:p-10 border-b border-white/10 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-6">
           <button 
             onClick={onClose}
@@ -83,9 +80,9 @@ export function KitchenMode({ recipe, onClose }: KitchenModeProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row relative z-10">
         {/* Step Display Area */}
-        <div className="flex-1 overflow-y-auto p-10 md:p-24 flex items-center justify-center relative">
+        <div className="flex-1 p-10 md:p-24 flex items-center justify-center relative">
           <div className="max-w-4xl w-full">
             <AnimatePresence mode="wait">
               <motion.div
@@ -134,7 +131,7 @@ export function KitchenMode({ recipe, onClose }: KitchenModeProps) {
         </div>
 
         {/* Ingredients Sidebar (Simplified for Focus) */}
-        <div className="w-full lg:w-[400px] bg-white/3 border-l border-white/5 p-10 overflow-y-auto">
+        <div className="w-full lg:w-[400px] bg-white/3 border-l border-white/5 p-10">
           <h4 className="text-[10px] uppercase tracking-mega font-bold text-brand-gold mb-12 flex items-center gap-3">
              < ChefHat className="w-4 h-4" /> The Pantry Required
           </h4>
@@ -181,6 +178,6 @@ export function KitchenMode({ recipe, onClose }: KitchenModeProps) {
           )}
         </div>
       </footer>
-    </motion.div>
+    </div>
   );
 }

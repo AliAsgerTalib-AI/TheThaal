@@ -9,6 +9,9 @@ import { RecipeModal } from './components/RecipeModal';
 import { RecipeFormModal } from './components/RecipeFormModal';
 import { KitchenMode } from './components/KitchenMode';
 import { ThaalPlanner } from './components/ThaalPlanner';
+import { SpicesPage } from './components/SpicesPage';
+import { TraditionPage } from './components/TraditionPage';
+import { AboutPage } from './components/AboutPage';
 import { FLAVOR_PROFILES } from './constants';
 import { VERIFIED_RECIPES } from './data/verifiedRecipes';
 import { motion, AnimatePresence } from 'motion/react';
@@ -19,6 +22,9 @@ export default function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isThaalPlannerOpen, setIsThaalPlannerOpen] = useState(false);
+  const [isSpicesPageOpen, setIsSpicesPageOpen] = useState(false);
+  const [isTraditionPageOpen, setIsTraditionPageOpen] = useState(false);
+  const [isAboutPageOpen, setIsAboutPageOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [userRecipes, setUserRecipes] = useState<Recipe[]>([]);
   const [aiGeneratedRecipe, setAiGeneratedRecipe] = useState<Recipe | null>(null);
@@ -155,179 +161,250 @@ export default function App() {
         setIsMobileMenuOpen={setIsMobileMenuOpen}
         onContributeClick={() => setIsCreateModalOpen(true)}
         onThaalPlannerClick={() => setIsThaalPlannerOpen(true)}
-      />
-
-      {/* Hero Orchestrator Section */}
-      <section className="relative h-[80vh] flex items-center justify-center overflow-hidden mb-20">
-        <div className="absolute inset-0 z-0">
-          <img 
-            src="https://images.unsplash.com/photo-1514326640560-7d063ef2aed5?auto=format&fit=crop&q=80" 
-            className="w-full h-full object-cover opacity-20 scale-105"
-            alt="Bohra Heritage"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-brand-bg/60 via-brand-bg/80 to-brand-bg" />
-        </div>
-
-        <div className="relative z-10 text-center max-w-4xl px-6 space-y-10">
-          <AnimatePresence>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <div className="flex justify-center mb-8">
-                <ChefHat className="w-12 h-12 text-brand-gold opacity-50" />
-              </div>
-              <span className="text-brand-gold uppercase tracking-mega font-bold text-[10px] block mb-2">Heritage Intelligence</span>
-              <h1 className="text-5xl md:text-8xl font-serif leading-tight tracking-tight text-brand-cream">
-                Orchestrate <span className="italic text-brand-gold">The Thaal</span>
-              </h1>
-              <p className="text-lg md:text-xl text-white/50 font-light max-w-2xl mx-auto leading-relaxed">
-                Management of 5 courses. Synchronized prep timelines. Traditional sequence preservation. 
-                Move beyond the recipe — manage the symphony.
-              </p>
-            </motion.div>
-          </AnimatePresence>
-          
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="flex flex-col md:flex-row items-center justify-center gap-6"
-          >
-            <button 
-               onClick={() => setIsThaalPlannerOpen(true)}
-               className="group relative px-12 py-6 overflow-hidden bg-brand-gold"
-            >
-              <span className="relative z-10 text-brand-bg text-[10px] uppercase font-bold tracking-mega flex items-center gap-3">
-                Launch Thaal Orchestrator
-              </span>
-            </button>
-            <button 
-               onClick={() => {
-                 const el = document.getElementById('discovery-section');
-                 el?.scrollIntoView({ behavior: 'smooth' });
-               }}
-               className="px-12 py-6 border border-white/10 text-[10px] uppercase font-bold tracking-mega text-white/40 hover:text-white hover:border-white/20 transition-all"
-            >
-              Explore the Archives
-            </button>
-          </motion.div>
-        </div>
-      </section>
-
-      <main id="discovery-section" className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 py-32">
-        <PantrySection 
-          selectedPantry={selectedPantry}
-          toggleIngredient={toggleIngredient}
-          userIngredients={userIngredients}
-          addCustomIngredient={(ing) => {
-            setUserIngredients(prev => [...prev, ing]);
-            setSelectedPantry(prev => [...prev, ing]);
-          }}
-          selectedServings={selectedServings}
-          setSelectedServings={setSelectedServings}
-          selectedCuisine={selectedCuisine}
-          setSelectedCuisine={setSelectedCuisine}
-          selectedFlavor={selectedFlavor}
-          setSelectedFlavor={setSelectedFlavor}
-          selectedDifficulty={selectedDifficulty}
-          setSelectedDifficulty={setSelectedDifficulty}
-          isGenerating={isGenerating}
-          onGenerate={generateAIDish}
-          onReset={handleResetFilters}
-        />
-
-        <AIGeneratedRecipe 
-          recipe={aiGeneratedRecipe} 
-          onClose={() => setAiGeneratedRecipe(null)}
-          isSaved={aiGeneratedRecipe ? userRecipes.some(r => r.id === aiGeneratedRecipe.id) : false}
-          onSave={() => {
-            if (aiGeneratedRecipe) {
-              handleAddUserRecipe(aiGeneratedRecipe);
-            }
-          }}
-          onStartKitchenMode={(recipe) => {
-            setRecipeInKitchen(recipe);
-            setAiGeneratedRecipe(null);
-          }}
-        />
-
-        <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-16 pb-8 border-b border-white/5">
-          <div className="flex bg-white/5 p-1.5 rounded-full border border-white/5">
-            {[
-              { id: 'all', label: 'Complete Thaal' },
-              { id: 'verified', label: 'Verified Archives' },
-              { id: 'user', label: 'My Kitchen' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setRecipeView(tab.id as any)}
-                className={`px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
-                  recipeView === tab.id 
-                  ? 'bg-brand-gold text-brand-bg shadow-lg shadow-brand-gold/20' 
-                  : 'text-white/40 hover:text-white'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          
-          <div className="text-[10px] uppercase tracking-mega font-bold text-white/20">
-            DISCOVERING {filteredRecipes.length} MASTERPIECES
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <AnimatePresence mode="popLayout">
-            {filteredRecipes.map((recipe, index) => (
-              <RecipeCard 
-                key={recipe.id}
-                recipe={recipe}
-                index={index}
-                onClick={() => setSelectedRecipe(recipe)}
-              />
-            ))}
-          </AnimatePresence>
-        </div>
-      </main>
-
-      <RecipeModal 
-        recipe={selectedRecipe}
-        onClose={() => setSelectedRecipe(null)}
-        onStartKitchenMode={(recipe) => {
-          setRecipeInKitchen(recipe);
-          setSelectedRecipe(null);
+        onSpicesClick={() => {
+          setIsSpicesPageOpen(true);
+          setIsTraditionPageOpen(false);
+          setIsAboutPageOpen(false);
+          setIsThaalPlannerOpen(false);
+          setIsCreateModalOpen(false);
+          window.scrollTo(0, 0);
+        }}
+        onTraditionClick={() => {
+          setIsTraditionPageOpen(true);
+          setIsSpicesPageOpen(false);
+          setIsAboutPageOpen(false);
+          setIsThaalPlannerOpen(false);
+          setIsCreateModalOpen(false);
+          window.scrollTo(0, 0);
+        }}
+        onAboutClick={() => {
+          setIsAboutPageOpen(true);
+          setIsSpicesPageOpen(false);
+          setIsTraditionPageOpen(false);
+          setIsThaalPlannerOpen(false);
+          setIsCreateModalOpen(false);
+          window.scrollTo(0, 0);
+        }}
+        onHomeClick={() => {
+          setIsSpicesPageOpen(false);
+          setIsTraditionPageOpen(false);
+          setIsAboutPageOpen(false);
+          setIsThaalPlannerOpen(false);
+          setIsCreateModalOpen(false);
+          window.scrollTo(0, 0);
         }}
       />
 
-      <AnimatePresence>
-        {recipeInKitchen && (
-          <KitchenMode 
-            recipe={recipeInKitchen}
-            onClose={() => setRecipeInKitchen(null)}
-          />
+      <AnimatePresence mode="wait">
+        {isThaalPlannerOpen ? (
+          <motion.div
+            key="planner"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <ThaalPlanner 
+              onClose={() => setIsThaalPlannerOpen(false)}
+              onStartKitchenMode={(recipe) => {
+                setRecipeInKitchen(recipe);
+                setIsThaalPlannerOpen(false);
+              }}
+            />
+          </motion.div>
+        ) : isSpicesPageOpen ? (
+          <motion.div
+            key="spices"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <SpicesPage onClose={() => setIsSpicesPageOpen(false)} />
+          </motion.div>
+        ) : isTraditionPageOpen ? (
+          <motion.div
+            key="tradition"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <TraditionPage onClose={() => setIsTraditionPageOpen(false)} />
+          </motion.div>
+        ) : isAboutPageOpen ? (
+          <motion.div
+            key="about"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <AboutPage onClose={() => setIsAboutPageOpen(false)} />
+          </motion.div>
+        ) : isCreateModalOpen ? (
+          <motion.div
+            key="contribute"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+             <RecipeFormModal 
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSubmit={handleAddUserRecipe}
+              />
+          </motion.div>
+        ) : selectedRecipe ? (
+          <motion.div
+            key="recipe-detail"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <RecipeModal 
+              recipe={selectedRecipe}
+              onClose={() => setSelectedRecipe(null)}
+              onStartKitchenMode={(recipe) => {
+                setRecipeInKitchen(recipe);
+                setSelectedRecipe(null);
+                window.scrollTo(0, 0);
+              }}
+            />
+          </motion.div>
+        ) : recipeInKitchen ? (
+          <motion.div
+            key="kitchen-mode"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <KitchenMode 
+              recipe={recipeInKitchen}
+              onClose={() => setRecipeInKitchen(null)}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="home"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {/* Hero Orchestrator Section */}
+            <section className="relative h-[80vh] flex items-center justify-center overflow-hidden mb-20">
+              <div className="absolute inset-0 z-0">
+                <img 
+                  src="https://images.unsplash.com/photo-1514326640560-7d063ef2aed5?auto=format&fit=crop&q=80" 
+                  className="w-full h-full object-cover opacity-20 scale-105"
+                  alt="Bohra Heritage"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-brand-bg/60 via-brand-bg/80 to-brand-bg" />
+              </div>
+
+              <div className="relative z-10 text-center max-w-4xl px-6 space-y-10">
+                <div className="space-y-6">
+                  <div className="flex justify-center mb-8">
+                    <ChefHat className="w-12 h-12 text-brand-gold opacity-50" />
+                  </div>
+                  <span className="text-brand-gold uppercase tracking-mega font-bold text-[10px] block mb-2">Heritage Intelligence</span>
+                  <h1 className="text-5xl md:text-8xl font-serif leading-tight tracking-tight text-brand-cream">
+                    Orchestrate <span className="italic text-brand-gold">The Thaal</span>
+                  </h1>
+                  <p className="text-lg md:text-xl text-white/50 font-light max-w-2xl mx-auto leading-relaxed">
+                    Management of 5 courses. Synchronized prep timelines. Traditional sequence preservation. 
+                    Move beyond the recipe — manage the symphony.
+                  </p>
+                </div>
+                
+                <div className="flex flex-col md:flex-row items-center justify-center gap-6">
+                  <button 
+                    onClick={() => setIsThaalPlannerOpen(true)}
+                    className="group relative px-12 py-6 overflow-hidden bg-brand-gold"
+                  >
+                    <span className="relative z-10 text-brand-bg text-[10px] uppercase font-bold tracking-mega flex items-center gap-3">
+                      Launch Thaal Orchestrator
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <main id="discovery-section" className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 py-32">
+              <PantrySection 
+                selectedPantry={selectedPantry}
+                toggleIngredient={toggleIngredient}
+                userIngredients={userIngredients}
+                addCustomIngredient={(ing) => {
+                  setUserIngredients(prev => [...prev, ing]);
+                  setSelectedPantry(prev => [...prev, ing]);
+                }}
+                selectedServings={selectedServings}
+                setSelectedServings={setSelectedServings}
+                selectedCuisine={selectedCuisine}
+                setSelectedCuisine={setSelectedCuisine}
+                selectedFlavor={selectedFlavor}
+                setSelectedFlavor={setSelectedFlavor}
+                selectedDifficulty={selectedDifficulty}
+                setSelectedDifficulty={setSelectedDifficulty}
+                isGenerating={isGenerating}
+                onGenerate={generateAIDish}
+                onReset={handleResetFilters}
+              />
+
+              <AIGeneratedRecipe 
+                recipe={aiGeneratedRecipe} 
+                onClose={() => setAiGeneratedRecipe(null)}
+                isSaved={aiGeneratedRecipe ? userRecipes.some(r => r.id === aiGeneratedRecipe.id) : false}
+                onSave={() => {
+                  if (aiGeneratedRecipe) {
+                    handleAddUserRecipe(aiGeneratedRecipe);
+                  }
+                }}
+                onStartKitchenMode={(recipe) => {
+                  setRecipeInKitchen(recipe);
+                  setAiGeneratedRecipe(null);
+                }}
+              />
+
+              <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-16 pb-8 border-b border-white/5">
+                <div className="flex bg-white/5 p-1.5 rounded-full border border-white/5">
+                  {[
+                    { id: 'all', label: 'Complete Thaal' },
+                    { id: 'verified', label: 'Verified Archives' },
+                    { id: 'user', label: 'My Kitchen' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setRecipeView(tab.id as any)}
+                      className={`px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
+                        recipeView === tab.id 
+                        ? 'bg-brand-gold text-brand-bg shadow-lg shadow-brand-gold/20' 
+                        : 'text-white/40 hover:text-white'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                
+                <div className="text-[10px] uppercase tracking-mega font-bold text-white/20">
+                  DISCOVERING {filteredRecipes.length} MASTERPIECES
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <AnimatePresence mode="popLayout">
+                  {filteredRecipes.map((recipe, index) => (
+                    <RecipeCard 
+                      key={recipe.id}
+                      recipe={recipe}
+                      index={index}
+                      onClick={() => setSelectedRecipe(recipe)}
+                    />
+                  ))}
+                </AnimatePresence>
+              </div>
+            </main>
+          </motion.div>
         )}
       </AnimatePresence>
-
-      <AnimatePresence>
-        {isThaalPlannerOpen && (
-          <ThaalPlanner 
-            onClose={() => setIsThaalPlannerOpen(false)}
-            onStartKitchenMode={(recipe) => {
-              setRecipeInKitchen(recipe);
-              setIsThaalPlannerOpen(false);
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      <RecipeFormModal 
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleAddUserRecipe}
-      />
     </div>
   );
 }

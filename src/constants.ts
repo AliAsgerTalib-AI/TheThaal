@@ -6,7 +6,7 @@ export const CUISINE_PROFILES: Profile[] = [
 ];
 
 export const FLAVOR_PROFILES: Profile[] = [
-  { name: 'Khatt-Mitth', desc: 'The soul of the Bohra palate; a sophisticated tug-of-war between the tang of dried kokum or tamarind pulp and the earthy sweetness of organic jaggery or dates.' },
+  { name: 'Khatta-Mitth', desc: 'The soul of the Bohra palate; a sophisticated tug-of-war between the tang of dried kokum or tamarind pulp and the earthy sweetness of organic jaggery or dates.' },
   { name: 'Zaikedaar', desc: 'A term for depth of flavor; achieved through "Bhunao" (slow-roasting) and the use of "Lazzat-e-Taam", a proprietary spice blend that unlocks deep umami and lingering aromatics.' },
   { name: 'Kurkura', desc: 'The iconic shatter-crisp texture of Bohra appetizers; perfected by using paper-thin "patti" sheets that are vertical-fried until golden and translucent.' },
   { name: 'Masaledaar', desc: 'Layered spice-craft that focuses on complexity rather than heat; using stone-pounded cumin, coriander, and the rare "dagad phool" for an earthy finish.' },
@@ -20,4 +20,4 @@ export const COMMON_INGREDIENTS = [
   'Besan', 'Spring Onions', 'Pineapple', 'Ghee', 'Saffron'
 ];
 
-export const CATEGORIES = ['All', 'Meethas', 'Khadan', 'Main'];
+export const CATEGORIES = ['All', 'Meethas', 'Kharaas', 'Jamaan', 'Salad'];

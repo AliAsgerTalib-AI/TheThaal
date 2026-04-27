@@ -33,20 +33,16 @@ export function RecipeModal({ recipe, onClose, onStartKitchenMode }: RecipeModal
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-12 print:p-0">
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="absolute inset-0 bg-brand-bg/95 backdrop-blur-2xl print:hidden"
-        />
+    <div className="min-h-screen bg-brand-bg relative pt-32 pb-20">
+      <div className="fixed inset-0 immersive-gradient opacity-10 pointer-events-none" />
+      
+      <div className="relative max-w-7xl mx-auto px-6 md:px-12">
         <motion.div
           layoutId={recipe.id}
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 100 }}
-          className={`relative bg-brand-bg border border-white/10 w-full max-w-7xl h-full md:h-auto md:max-h-[85vh] overflow-hidden flex flex-col lg:flex-row shadow-2xl print:bg-white print:text-black print:border-none print:shadow-none print:max-h-none print:overflow-visible ${pdfOptions.fontSize === 'small' ? 'print:text-[10px]' : pdfOptions.fontSize === 'large' ? 'print:text-[14px]' : 'print:text-[12px]'}`}
+          className={`relative bg-brand-bg border border-white/10 w-full flex flex-col lg:flex-row shadow-2xl print:bg-white print:text-black print:border-none print:shadow-none print:max-h-none print:overflow-visible rounded-[3rem] overflow-hidden ${pdfOptions.fontSize === 'small' ? 'print:text-[10px]' : pdfOptions.fontSize === 'large' ? 'print:text-[14px]' : 'print:text-[12px]'}`}
         >
           {recipe.image ? (
             <div className="w-full lg:w-5/12 h-80 lg:h-auto relative group print:hidden">
@@ -72,7 +68,7 @@ export function RecipeModal({ recipe, onClose, onStartKitchenMode }: RecipeModal
             </div>
           )}
           
-          <div className="flex-1 overflow-y-auto p-8 md:p-20 relative print:p-8">
+          <div className="flex-1 p-8 md:p-20 relative print:p-8">
             <div className="absolute inset-0 immersive-gradient opacity-10 pointer-events-none print:hidden" />
             
             <div className="hidden lg:flex justify-end mb-12 print:hidden items-center gap-4">
@@ -225,6 +221,7 @@ export function RecipeModal({ recipe, onClose, onStartKitchenMode }: RecipeModal
           </div>
         </motion.div>
       </div>
+    </div>
     </AnimatePresence>
   );
 }

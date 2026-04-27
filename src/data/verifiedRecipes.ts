@@ -4,7 +4,7 @@ export const VERIFIED_RECIPES: Recipe[] = [
   {
     id: 'v1',
     title: 'Dabba Gosht',
-    category: 'Main',
+    category: 'Jamaan',
     description: 'A legendary Bohra specialty - slow-cooked mutton in a rich cashew-cream gravy, topped with whisked egg and shimmering ghee.',
     image: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&q=80',
     time: '45 mins',
@@ -41,7 +41,7 @@ export const VERIFIED_RECIPES: Recipe[] = [
     time: '30 mins',
     servings: '4 Guests',
     servingCount: 4,
-    flavorProfile: 'Khatt-Mitth',
+    flavorProfile: 'Khatta-Mitth',
     cuisineType: 'Traditional',
     difficulty: 'Easy',
     ingredients: [
