@@ -1,4 +1,4 @@
-import { Menu, X, Search, UtensilsCrossed } from 'lucide-react';
+import { Menu, X, Search, UtensilsCrossed, Sparkles } from 'lucide-react';
 
 interface NavigationProps {
   searchQuery: string;
@@ -6,6 +6,7 @@ interface NavigationProps {
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
   onContributeClick: () => void;
+  onThaalPlannerClick: () => void;
 }
 
 export function Navigation({ 
@@ -13,7 +14,8 @@ export function Navigation({
   setSearchQuery, 
   isMobileMenuOpen, 
   setIsMobileMenuOpen, 
-  onContributeClick 
+  onContributeClick,
+  onThaalPlannerClick
 }: NavigationProps) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass-nav">
@@ -32,6 +34,12 @@ export function Navigation({
         </div>
 
         <div className="flex items-center gap-6">
+          <button 
+            onClick={onThaalPlannerClick}
+            className="hidden lg:flex items-center gap-2 px-4 py-2 border border-brand-gold/30 text-brand-gold text-[10px] tracking-widest font-bold uppercase transition-all hover:bg-brand-gold/10"
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Orchestrator
+          </button>
           <button 
             onClick={onContributeClick}
             className="hidden sm:flex items-center gap-2 px-4 py-2 border border-brand-gold/30 text-brand-gold text-[10px] tracking-widest font-bold uppercase transition-all hover:bg-brand-gold/10"

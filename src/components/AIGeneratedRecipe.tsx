@@ -1,67 +1,97 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Heart, FileDown, Bookmark, ChefHat, ShoppingCart } from 'lucide-react';
+import { X, Heart, FileDown, Bookmark, Info, ChefHat } from 'lucide-react';
 import { Recipe } from '../types';
-import { CookingModeModal } from './CookingModeModal';
-import { ShoppingListModal } from './ShoppingListModal';
 
 interface AIGeneratedRecipeProps {
   recipe: Recipe | null;
   onClose: () => void;
   onSave: () => void;
+  onStartKitchenMode: (recipe: Recipe) => void;
   isSaved?: boolean;
 }
 
-export function AIGeneratedRecipe({ recipe, onClose, onSave, isSaved }: AIGeneratedRecipeProps) {
-  const [isCookingMode, setIsCookingMode] = useState(false);
-  const [isShoppingList, setIsShoppingList] = useState(false);
+export function AIGeneratedRecipe({ recipe, onClose, onSave, onStartKitchenMode, isSaved }: AIGeneratedRecipeProps) {
+  const [showPdfSettings, setShowPdfSettings] = useState(false);
+  const [pdfOptions, setPdfOptions] = useState({
+    showHeritage: true,
+    fontSize: 'normal' as 'small' | 'normal' | 'large'
+  });
 
   const handlePrint = () => {
-    const container = document.getElementById('ai-recipe-container');
-    if (!container) return;
+    setShowPdfSettings(false);
+    setTimeout(() => {
+      try {
+        window.focus();
+        window.print();
+      } catch (e) {
+        console.error("Print failed:", e);
+        alert("Please open the app in a new tab to create a PDF.");
+      }
+    }, 100);
+  };
 
-    const styles = Array.from(document.querySelectorAll('style'))
-      .map(el => el.innerHTML).join('\n');
-    const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-      .map(el => el.outerHTML).join('\n');
-
-    const popup = window.open('', '_blank', 'width=900,height=700');
-    if (!popup) {
-      window.focus();
-      window.print();
-      return;
-    }
-
-    popup.document.open();
-    popup.document.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${recipe?.title ?? 'Recipe'} – Thaali Traditions</title>
-  ${links}
-  <style>${styles}</style>
-  <style>body { background: white; margin: 0; padding: 0; } #ai-recipe-container { max-width: 900px; margin: 0 auto; }</style>
-</head>
-<body>
-  ${container.outerHTML}
-  <script>window.onload = function() { window.print(); };<\/script>
-</body>
-</html>`);
-    popup.document.close();
+  const fontSizeClasses = {
+    small: 'text-xs',
+    normal: 'text-sm',
+    large: 'text-base'
   };
 
   return (
-    <>
     <AnimatePresence>
       {recipe && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="mt-16 overflow-hidden print:m-0 relative z-20"
+          className={`mt-16 overflow-hidden print:m-0 relative z-20 ${pdfOptions.fontSize === 'small' ? 'print:text-[10px]' : pdfOptions.fontSize === 'large' ? 'print:text-[14px]' : 'print:text-[12px]'}`}
         >
           <div id="ai-recipe-container" className="glass-card p-10 md:p-20 border-brand-gold/30 bg-brand-gold/5 relative print:bg-white print:text-black print:p-8 print:border-none print:shadow-none">
-            <div className="absolute top-8 right-8 print:hidden z-30">
+            <div className="absolute top-8 right-8 print:hidden z-30 flex items-center gap-2">
+              {showPdfSettings && (
+                <motion.div 
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="glass-card p-4 mr-2 flex flex-col gap-4 min-w-[200px]"
+                >
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input 
+                      type="checkbox" 
+                      checked={pdfOptions.showHeritage}
+                      onChange={(e) => setPdfOptions(prev => ({ ...prev, showHeritage: e.target.checked }))}
+                      className="w-4 h-4 rounded border-white/20 bg-white/5 text-brand-gold focus:ring-brand-gold"
+                    />
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-white/60 group-hover:text-brand-gold transition-colors">Include Heritage</span>
+                  </label>
+                  
+                  <div className="space-y-2">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-white/30 block">Font Size</span>
+                    <div className="flex gap-2">
+                      {(['small', 'normal', 'large'] as const).map(size => (
+                        <button
+                          key={size}
+                          onClick={() => setPdfOptions(prev => ({ ...prev, fontSize: size }))}
+                          className={`flex-1 py-1 text-[8px] uppercase font-bold tracking-tighter border transition-all ${
+                            pdfOptions.fontSize === size 
+                            ? 'bg-brand-gold text-brand-bg border-brand-gold' 
+                            : 'border-white/10 text-white/40 hover:border-white/30'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handlePrint}
+                    className="w-full py-2 bg-brand-gold text-brand-bg text-[10px] font-bold uppercase tracking-widest hover:bg-white transition-all"
+                  >
+                    Generate PDF
+                  </button>
+                </motion.div>
+              )}
+              
               <button 
                 onClick={onClose}
                 className="p-4 glass-card text-brand-gold/50 hover:text-brand-gold rounded-full transition-colors"
@@ -82,12 +112,14 @@ export function AIGeneratedRecipe({ recipe, onClose, onSave, isSaved }: AIGenera
                     {recipe.description}
                   </p>
                 </div>
-                <div>
-                  <h4 className="text-[10px] uppercase tracking-widest text-white/30 font-bold mb-4 print:text-black/40">Legacy & Lore</h4>
-                  <p className="text-sm text-white/60 font-light leading-relaxed print:text-black/60">
-                    {recipe.heritage}
-                  </p>
-                </div>
+                {pdfOptions.showHeritage && (
+                  <div>
+                    <h4 className="text-[10px] uppercase tracking-widest text-white/30 font-bold mb-4 print:text-black/40">Legacy & Lore</h4>
+                    <p className="text-sm text-white/60 font-light leading-relaxed print:text-black/60">
+                      {recipe.heritage}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-12 mb-16">
@@ -132,35 +164,29 @@ export function AIGeneratedRecipe({ recipe, onClose, onSave, isSaved }: AIGenera
               </div>
 
               <div className="flex flex-wrap gap-4 mt-8 print:hidden relative z-30">
-                <button
+                <button 
+                  onClick={() => recipe && onStartKitchenMode(recipe)}
+                  className="px-8 py-4 bg-brand-gold text-brand-bg text-[10px] font-bold uppercase tracking-widest hover:bg-white transition-all flex items-center gap-2 shadow-lg shadow-brand-gold/10"
+                >
+                  <ChefHat className="w-4 h-4" /> Start Kitchen Mode
+                </button>
+                <button 
                   onClick={onSave}
                   disabled={isSaved}
                   className={`px-8 py-4 text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${
-                    isSaved
+                    isSaved 
                     ? 'bg-green-600/20 text-green-500 border border-green-500/30 cursor-default'
-                    : 'bg-brand-gold text-brand-bg hover:bg-white'
+                    : 'glass-card border border-white/10 text-white/50 hover:bg-white/5'
                   }`}
                 >
                   {isSaved ? <Heart className="w-4 h-4 fill-current" /> : <Bookmark className="w-4 h-4" />}
                   {isSaved ? 'Saved to My Recipes' : 'Save to My Recipes'}
                 </button>
-                <button
-                  onClick={() => setIsCookingMode(true)}
-                  className="px-8 py-4 glass-card text-brand-gold text-[10px] font-bold uppercase tracking-widest hover:border-brand-gold/50 transition-all flex items-center gap-2"
+                <button 
+                  onClick={() => setShowPdfSettings(!showPdfSettings)}
+                  className={`px-8 py-4 glass-card text-brand-gold text-[10px] font-bold uppercase tracking-widest hover:border-brand-gold/50 transition-all flex items-center gap-2 cursor-pointer ${showPdfSettings ? 'border-brand-gold bg-brand-gold/10' : ''}`}
                 >
-                  <ChefHat className="w-4 h-4" /> Start Cooking
-                </button>
-                <button
-                  onClick={() => setIsShoppingList(true)}
-                  className="px-8 py-4 glass-card text-brand-gold text-[10px] font-bold uppercase tracking-widest hover:border-brand-gold/50 transition-all flex items-center gap-2"
-                >
-                  <ShoppingCart className="w-4 h-4" /> Shopping List
-                </button>
-                <button
-                  onClick={handlePrint}
-                  className="px-8 py-4 glass-card text-brand-gold text-[10px] font-bold uppercase tracking-widest hover:border-brand-gold/50 transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <FileDown className="w-4 h-4" /> Create a PDF
+                  <FileDown className="w-4 h-4" /> PDF Settings
                 </button>
               </div>
             </div>
@@ -168,18 +194,5 @@ export function AIGeneratedRecipe({ recipe, onClose, onSave, isSaved }: AIGenera
         </motion.div>
       )}
     </AnimatePresence>
-
-    <AnimatePresence>
-      {recipe && isCookingMode && (
-        <CookingModeModal recipe={recipe} onClose={() => setIsCookingMode(false)} />
-      )}
-    </AnimatePresence>
-
-    <AnimatePresence>
-      {recipe && isShoppingList && (
-        <ShoppingListModal recipe={recipe} onClose={() => setIsShoppingList(false)} />
-      )}
-    </AnimatePresence>
-    </>
   );
 }

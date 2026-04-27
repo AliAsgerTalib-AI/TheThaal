@@ -16,8 +16,14 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, index, onClick }
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.6, delay: index * 0.1 }}
-      className="group cursor-pointer glass-card p-6"
+      whileHover={{ y: -8, borderColor: 'rgba(212, 175, 55, 0.4)' }}
+      transition={{ 
+        layout: { duration: 0.3 },
+        opacity: { duration: 0.6, delay: index * 0.1 },
+        y: { type: 'spring', stiffness: 300, damping: 20 },
+        borderColor: { duration: 0.3 }
+      }}
+      className="group cursor-pointer glass-card p-6 border border-white/10"
       onClick={onClick}
     >
       <div className="relative aspect-[4/5] overflow-hidden mb-8 grayscale-[0.5] group-hover:grayscale-0 transition-all duration-700">
@@ -34,6 +40,11 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, index, onClick }
           <span className="inline-block bg-brand-gold text-brand-bg px-3 py-1 text-[9px] font-bold uppercase tracking-widest">
             {recipe.category}
           </span>
+          {recipe.verified && (
+            <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md text-brand-gold px-3 py-1 text-[9px] font-bold uppercase tracking-widest ml-2 border border-brand-gold/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse" /> Verified Archive
+            </span>
+          )}
         </div>
       </div>
       

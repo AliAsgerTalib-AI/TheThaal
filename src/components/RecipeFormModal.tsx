@@ -68,7 +68,14 @@ export function RecipeFormModal({ isOpen, onClose, onSubmit }: RecipeFormModalPr
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-brand-cream">
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Prep/Cook Time</label>
-                    <input name="time" required placeholder="45 Mins" className="w-full bg-white/5 border border-white/10 p-4 text-sm outline-none focus:border-brand-gold transition-colors" />
+                    <input 
+                      name="time" 
+                      required 
+                      pattern="\d+\s*([mM]in(ute)?s?|[hH]ours?|[hH]rs?)"
+                      title="Please enter a valid time format, e.g., '45 Mins' or '2 hours'"
+                      placeholder="45 Mins" 
+                      className="w-full bg-white/5 border border-white/10 p-4 text-sm outline-none focus:border-brand-gold transition-colors" 
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Guests</label>
