@@ -1,23 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Users, Clock, ChefHat, Sparkles, Wand2, ArrowRight, Play, CheckCircle2, ChevronDown, ChevronUp, BookOpen, Settings, ShieldAlert, Activity, Trophy, AlertTriangle, Lock, Eye, EyeOff, Rocket, Zap, FileText, Library, Globe, Target, TrendingUp, ShieldCheck } from 'lucide-react';
+import { X, Users, Clock, ChefHat, Sparkles, Wand2, ArrowRight, Play, CheckCircle2, ChevronDown, ChevronUp, BookOpen, Settings, ShieldAlert, Activity, Trophy, AlertTriangle, Lock, Eye, EyeOff, Rocket, Zap, FileText, Library, Globe, Target, TrendingUp, ShieldCheck, Search, ArrowUpDown, ChevronLeft, ChevronRight, Check, RotateCcw } from 'lucide-react';
 import { ThaalPlan, Recipe } from '../types';
 import { GoogleGenAI, Type } from '@google/genai';
 
 interface ThaalPlannerProps {
   onClose: () => void;
   onStartKitchenMode: (recipe: Recipe) => void;
+  onStageChange?: (stage: number) => void;
+  currentStage?: number;
+  plan: ThaalPlan | null;
+  setPlan: (plan: ThaalPlan | null) => void;
+  thaalCount: number;
+  setThaalCount: (count: number) => void;
+  onSavePlan: (plan: ThaalPlan) => void;
+  onSaveRecipe: (recipe: Recipe) => void;
+  isArchived?: boolean;
 }
 
-export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps) {
-  const [thaalCount, setThaalCount] = useState(1);
+export function ThaalPlanner({ 
+  onClose, 
+  onStartKitchenMode, 
+  onStageChange, 
+  currentStage = 0,
+  plan,
+  setPlan,
+  thaalCount,
+  setThaalCount,
+  onSavePlan,
+  onSaveRecipe,
+  isArchived = false
+}: ThaalPlannerProps) {
+  const [location, setLocation] = useState('');
+  const [month, setMonth] = useState('January');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [plan, setPlan] = useState<ThaalPlan | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'audits' | 'combinations' | 'logistics'>('overview');
   const [expandedDishIndex, setExpandedDishIndex] = useState<number | null>(null);
   const [kitchenMode, setKitchenMode] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  
+  const toggleStep = (index: number) => {
+    setCompletedSteps(prev => 
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
+  };
+  
+  useEffect(() => {
+    if (onStageChange && plan) {
+      // Map timeline step to a 1-8 course progression roughly, or just 1-6 if 6 courses.
+      // Since it's a 25 step timeline, let's just use it as is or map it.
+      // For the CEO gauge, let's use the sequence in the timeline if possible.
+      onStageChange(Math.floor((currentStep / plan.timeline.length) * 8) + 1);
+    }
+  }, [currentStep, plan, onStageChange]);
+
   const [isChallenging, setIsChallenging] = useState<number | null>(null);
   const [challengeResponse, setChallengeResponse] = useState<string | null>(null);
+
+  // Logistics states
+  const [ingSearch, setIngSearch] = useState('');
+  const [equipSearch, setEquipSearch] = useState('');
+  const [cutlerySearch, setCutlerySearch] = useState('');
+  const [ingSort, setIngSort] = useState<{ field: string, dir: 'asc' | 'desc' } | null>(null);
+  const [equipSort, setEquipSort] = useState<{ field: string, dir: 'asc' | 'desc' } | null>(null);
+  const [cutlerySort, setCutlerySort] = useState<{ field: string, dir: 'asc' | 'desc' } | null>(null);
 
   const challengeTheMaster = async (dishIndex: number) => {
     if (!plan) return;
@@ -30,212 +77,379 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
     Defend the orchestration with a short, authoritative, but informative 100-word response that explains why THIS course is essential at THIS moment for the Barakat of the Thaal. Mention specific Bohra traditions.`;
 
     try {
-      const result = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-pro-preview",
         contents: [{ role: "user", parts: [{ text: prompt }] }]
       });
-      const text = result.candidates[0].content.parts[0].text;
-      setChallengeResponse(text || "The Master nods in silent agreement.");
+      setChallengeResponse(response.text || "The Master nods in silent agreement.");
     } catch (error) {
       setChallengeResponse("The Master remains silent. (Error connecting to the Daawat expert)");
     }
   };
 
-  const generateThaalPlan = async () => {
-    setIsGenerating(true);
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
-
-    const totalGuests = thaalCount * 8;
-
-    const prompt = `Act as a master Dawoodi Bohra Thaal Orchestrator with 40 years of experience.
-    Create a complete Thaal Plan for ${thaalCount} Thaals (Total Guests: ${totalGuests}). Note: Each Thaal serves exactly 8 people.
-    
-    A Thaal must follow the traditional sequence: 
-    1. First Meethas (Sweet)
-    2. First Khara (Savory)
-    3. Second Meethas
-    4. Second Khara
-    5. Main Course (Gavri/Jaman)
-    6. Accompaniments (Salads/Dips)
-    
-    Requirements:
-    - DISHES: Provide exactly 6 courses following the above sequence. Each dish must be a full recipe object. No summaries, no omissions.
-    - LOGISTICS: Provide a TRULY EXHAUSTIVE AND NON-ABBREVIATED Master Procurement & Infrastructure List.
-        1. INGREDIENTS: A complete master list including EVERY SINGLE ITEM, SPICE, AND GARNISH required across all recipes. List at least 50+ specific items (e.g. Saffron, Green Cardamom, Cloves, Cinnamon sticks, Star Anise, Mace, Stone-pounded Cumin, various Chilies, Ghee, Jaggery, specialized salts, fresh Mint, Coriander, Fried Onions, Rose water, Kewra, etc.). 
-           - item: Precise name of ingredient/spice.
-           - baseQuantity: Quantity for 1 guest.
-           - scaledQuantity: Quantity for ${totalGuests} guests.
-           - emergencyBuffer: Extra quantity (25-30%) for emergencies, wastage, or spoilage.
-           - totalProcurement: Exact sum of scaled + emergency buffer.
-           - purpose: Which dishes or courses use this item. Be specific.
-        2. EQUIPMENT: Exhaustive list of EVERY cooking utensil and specialized vessel (including Patiya, Deg, Langri, Kundi, frying pans, stirrers, sieves, specific size ladles, weighing scales, etc.) and quantities needed.
-        3. INFRASTRUCTURE: Exact number of commercial stoves needed, total kitchen staff (Heads, Comis, Dishwashers, Prep-cooks), and serving staff (for Safra rotation and water service).
-        4. THAAL CUTLERY: Exhaustive list of every single item required at the Thaal (including Sini, Safra, Glasses, Spoons, Chalamu, Pardi, Napkins, Finger bowls, Tarkati, Salt/Pepper shakers, etc.).
-           - quantityPerThaal: Standard for 1 Thaal (8 guests).
-           - totalNeeded: scaled for ${thaalCount} Thaals.
-           - wastageBuffer: 15% extra for breakage or loss.
-    - CHEF'S INTUITION: For each dish, provide a "Chef's Intuition" — a short, sensory description of the EXACT moment the dish is perfect.
-    - PLATING PHYSICS: Describe the exact bowl placement, vessel material (Kansi, Steel, Ceramic, Silver-Plated), and the required temperature of the vessel itself.
-    - TROUBLESHOOTING: For EACH dish, provide one "Master's Fix".
-    - TIMELINE: Generate a extremely high-granularity synchronized sequence (20-25+ steps) across 3 tracks: "Active Cooking", "Host Rituals", and "Prep/Plating". 
-    - COORDINATION: Every step MUST include a "coordinationNote" (orchestration details between BOH and Safra) and an "atmosphericTrigger" (specific lighting/scent/ambience shifts).
-    - ROLES: Every timeline step MUST have a role of "Chef", "Host", or "Server".
-    - SENSORY CUES: For each timeline step, provide a precise sensory cue.
-    - ATMOSPHERE: Provide instructions for Lighting, Scent, and Vibe.
-    - ETIQUETTE: 3 specific rituals.
-    - ZUBAAN-NI-CHATAS: Provide 2-3 palate cleansers/condiments (Pickle, Chutney, Raita, or Murabba) that perfectly COMPLEMENT the specific dishes in this plan. Explain the "Pairing Logic" (why it fits the mood/flavor).
-    - MASTER'S CRITIQUE: Provide a 2-sentence "Brutal Take" on the balance of THIS specific plan from the perspective of a 30-year Daawat veteran.
-    - ENGINEERING AUDIT: Provide a technical assessment including the "Critical Path" (the process that cannot be delayed), the "Bottleneck Dish", a list of specialized Bohra vessels needed (e.g. Sini, Kundi, Patiya), and adjustment advice for scaling to 5+ Thaals.
-    - QA AUDIT: Provide a rigorous QA assessment. 
-        1. SCORECARD: 3 metrics (Balance, Complexity, Authentic Ritual Compliance) with a score 0-100 and a short critique.
-        2. HAZARD WARNINGS: Identify any potential Hygiene, Ritual, or Logistics risks (e.g., "High Dairy risk in summer heat", "Ritual mismatch with sequence").
-    - SECURITY AUDIT: Provide a high-level security/integrity assessment.
-        1. TRADITION INTEGRITY: How well does this protect the "Sanctity of the Thaal"?
-        2. PHYSICAL SECURITY: Critical logistics warnings (e.g., vessel weighting, pardi placement).
-        3. AUTHENTICITY FIREWALL: A status of VERIFIED or COMPROMISED based on ingredients/sequence.
-    - RELEASE AUDIT: Provide a deployment readiness assessment.
-        1. DEPLOYMENT READINESS: Is this plan ready for a 100-Thaal high-speed event?
-        2. FAILOVER PROTOCOL: What is the backup if a primary dish fails?
-        3. SCALING PHYSICS: What changes when moving from 1 Thaal to massive scale?
-        4. RITUAL LATENCY: Assessment (Low/Moderate/High) of time delays caused by host rituals.
-    - LOGISTICAL AUDIT: Provide a Browser Agent/Logistics expert's "Brutal Take" on UI/UX in the kitchen.
-        1. FRICTION POINTS: 2-3 moments where the plan might fail due to physical stress (e.g., "Too many timed steps for a solo chef").
-        2. CHAOS FACTOR: A score 0-100 representing how sensitive this plan is to guest delays.
-        3. BOH INTEGRITY: Status (SOLID or VULNERABLE).
-        4. AGENT RECOMMENDATION: One contrarian recommendation to improve execution.
-    - MASTER CHEF'S AUDIT: Provide a 40-year Master Chef's "Brutal Take".
-        1. BRUTAL TAKE: Honest, blunt assessment of the plan's soul.
-        2. GREATEST WEAKNESS: Identify the one critical failure point.
-        3. STRATEGIC ENHANCEMENT: One high-level strategic enhancement.
-        4. CONTRARIAN TAKE: A "Master's Command" that goes against modern convenience.
-    - SAFETY AUDIT: Provide a rigorous 30-year Safety Officer's assessment.
-        1. FOOD SAFETY CCPs: Identify 2-3 Critical Control Points (e.g., cooling times for Malida).
-        2. PHYSICAL HAZARDS: Risks like "Scalding risk during Sini lift" or "Slip risk near Wash-Basin".
-        3. RITUAL SAFETY: Safe handling of Lohban (incense) or candles during the meal.
-        4. EMERGENCY FAILOVER: Response plan for a dropped Thaal or medical incident in the Safra.
-    - STRATEGIC AUDIT: Provide a 30-year Strategist's "Brutal Take".
-        1. RESOURCE OPTIMIZATION: Assessment of efficiency (Time/Labor).
-        2. MARKET READINESS: Selection (Private/Celebration/Industrial).
-        3. THE LEAVER: One course or element to EXCLUDE to improve the strategic impact of the remaining meal (Contrarian).
-        4. STRATEGIC MOAT: What makes this Daawat unforgettable/unbeatable from a business/heritage perspective?
-    - COMBINATIONS AUDIT: Provide a master-level analysis of the dish combinations. 
-        1. SELECTION LOGIC: Why these specific dishes were paired together.
-        2. TASTE SYMPHONY: A deep breakdown of flavor progression (Sweet, Salt, Sour, Umami) and how they peak.
-        3. TEXTURE MAPPING: How mouthfeel evolves (Crispy vs Creamy vs Rough).
-        4. PALATE MODULATION: How a dish prepares the palate for the next course.
-        5. FLAVOR PROGRESSION: A detailed course-by-course breakdown of flavor evolution for the entire meal. There MUST be exactly one entry for each of the 6 courses.
-           - course: The dish name or course type.
-           - transition: How the flavor shifts from the previous dish.
-           - palateEffect: The sensory impact on the guest's palate.
-        6. ALLOWED SUBSTITUTIONS: List 4 safe swaps with detailed reasons.
-        7. FORBIDDEN SUBSTITUTIONS: List 4 illegal swaps and the specific chemical or ritual consequence.
-        8. EFFICIENCY SECRETS: Kitchen-relay hacks (e.g. shared base gravies).
-        9. COST LEVERS: How high-value ingredients are balanced by strategic volume fillers.
-        10. EFFICIENCY ANALYSIS: Overall kitchen throughput optimization.
-        11. COST OPTIMIZATION: Wastage management.
-    - DOCUMENTATION AUDIT: Provide a Heritage Codex assessment.
-        1. HOST SOP: Precise behavioral instructions for the Host during the Daawat.
-        2. SERVER SOP: Logistics for servers (how to carry Sini, how to rotate dishes).
-        3. GUEST PROTOCOL BRIEF: 2-3 sentences to share with guests to explain the meaning of this specific meal.
-        4. GLOSSARY: 3-4 specialized terms used in this plan (e.g., Sini, Kundi, Safra, Chalamu) with brief meanings.
-    - CHEF SECRET: Professional secret.
-    - COMPLEMENTARY SUGGESTIONS: 2-3 additional items linked to dishes.
-    
-    Output format MUST be JSON:
-    {
-      "title": "string",
-      "guestCount": number,
-      "masterCritique": "string",
-      "engineeringAudit": {
-        "criticalPath": "string",
-        "bottleneckDish": "string",
-        "vesselInventory": ["string"],
-        "scaleAdjustments": "string"
-      },
-      "qaAudit": {
-        "scorecard": [{"metric": "string", "score": number, "critique": "string"}],
-        "hazardWarnings": [{"type": "string", "severity": "string", "message": "string"}]
-      },
-      "securityAudit": {
-        "traditionIntegrity": "string",
-        "physicalSecurity": "string",
-        "authenticityFirewall": {
-          "status": "string",
-          "notes": "string"
-        }
-      },
-      "releaseAudit": {
-        "deploymentReadiness": "string",
-        "failoverProtocol": "string",
-        "scalingPhysics": "string",
-        "ritualLatency": "string"
-      },
-      "logisticalAudit": {
-        "frictionPoints": ["string"],
-        "chaosFactor": number,
-        "bohIntegrity": "string",
-        "agentRecommendation": "string"
-      },
-      "masterChefAudit": {
-        "brutalTake": "string",
-        "greatestWeakness": "string",
-        "strategicEnhancement": "string",
-        "contrarianTake": "string"
-      },
-      "safetyAudit": {
-        "foodSafetyCCPs": ["string"],
-        "physicalHazards": ["string"],
-        "ritualSafetyProtocol": "string",
-        "emergencyFailover": "string"
-      },
-      "strategicAudit": {
-        "resourceOptimization": "string",
-        "marketReadiness": "string",
-        "theLeaver": "string",
-        "strategicMoat": "string"
-      },
-      "combinationsAudit": {
-        "selectionLogic": "string",
-        "allowedSubstitutions": [{"original": "string", "substitute": "string", "reason": "string"}],
-        "forbiddenSubstitutions": [{"dish": "string", "forbidden": "string", "consequence": "string"}],
-        "efficiencyAnalysis": "string",
-        "costOptimization": "string"
-      },
-      "masterLogistics": {
-        "ingredients": [{"item": "string", "baseQuantity": "string", "scaledQuantity": "string", "emergencyBuffer": "string", "totalProcurement": "string", "purpose": "string"}],
-        "equipment": [{"utensil": "string", "quantity": number, "useCase": "string"}],
-        "infrastructure": {"stovesNeeded": number, "kitchenStaff": number, "servingStaff": number},
-        "thaalCutlery": [{"item": "string", "quantityPerThaal": number, "totalNeeded": number, "wastageBuffer": number}]
-      },
-      "documentationAudit": {
-        "hostSop": "string",
-        "serverSop": "string",
-        "guestProtocolBrief": "string",
-        "glossary": [{"term": "string", "meaning": "string"}]
-      },
-      "pairingNotes": "string",
-      "condiments": [
-        {
-          "name": "string",
-          "type": "string",
-          "description": "string",
-          "pairingLogic": "string"
-        }
-      ],
-      "dishes": [...],
-      "timeline": [...],
-      "etiquette": [...],
-      "chefSecret": "string",
-      "atmosphere": { ... },
-      "complementarySuggestions": [...]
+  const printContent = (title: string, content: string) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Please allow popups to print your inventory lists.");
+      return;
     }
-    
-    Ensure all recipes follow the Bohra culinary tradition strictly.`;
 
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:wght@700&display=swap');
+            body { 
+              font-family: 'Inter', sans-serif; 
+              padding: 40px; 
+              color: #1a1a1a; 
+              line-height: 1.6;
+              max-width: 1000px;
+              margin: 0 auto;
+            }
+            h1 { 
+              color: #8B4513; 
+              font-family: 'Playfair Display', serif; 
+              border-bottom: 4px solid #DAA520; 
+              padding-bottom: 10px;
+              margin-bottom: 30px;
+              text-align: center;
+            }
+            h2 { 
+              color: #DAA520; 
+              margin-top: 40px; 
+              border-bottom: 2px solid #eee; 
+              font-family: 'Playfair Display', serif;
+              padding-bottom: 5px;
+            }
+            h3 { color: #555; margin-top: 25px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+            th, td { border: 1px solid #eee; padding: 12px; text-align: left; }
+            th { background-color: #fcfcfc; font-weight: bold; color: #8B4513; text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.1em; }
+            .footer { margin-top: 60px; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 20px; text-align: center; font-style: italic; }
+            .recipe-block { page-break-inside: avoid; margin-bottom: 40px; border: 1px solid #eee; padding: 25px; border-radius: 8px; }
+            .tag { display: inline-block; padding: 2px 8px; background: #DAA520; color: white; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 10px; }
+            @media print { 
+              .footer { position: fixed; bottom: 20px; width: 100%; } 
+              body { padding: 20px; }
+              .recipe-block { border: 1px solid #ccc; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="tag">DAWOODI BOHRA TRADITION</div>
+          <h1>${title}</h1>
+          <p style="text-align: center; color: #666; margin-bottom: 40px;">
+            Orchestration Plan: ${plan?.title} | Total Guests: ${plan?.guestCount} 
+            ${plan?.location ? ` | Location: ${plan.location}` : ''} 
+            ${plan?.month ? ` | Month: ${plan.month}` : ''}
+          </p>
+          ${content}
+          <div class="footer">
+            Copyright Ali Asger Talib / Noore Sara A Talib<br/>
+            Generated by Thaal Traditions Orchestrator • contact: aliasgertalib@gmail.com
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(() => {
+                window.print();
+                // window.close(); // Not closing automatically to allow user to see it if print fails
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const printAllRecipes = () => {
+    if (!plan) return;
+    
+    let content = '';
+    
+    // 1. Master Ingredient List
+    content += `
+      <div class="recipe-block">
+        <h2>MASTER PROCUREMENT: INGREDIENTS & SPICES</h2>
+        <table>
+          <thead>
+            <tr><th>Item</th><th>Category</th><th>Total Needed</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            ${plan.masterLogistics.ingredients.map(ing => `
+              <tr>
+                <td>${ing.item}</td>
+                <td>${ing.category || 'N/A'}</td>
+                <td style="color:#DAA520; font-weight:bold">${ing.totalProcurement}</td>
+                <td>${ing.purpose}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // 2. Master Equipment List
+    content += `
+      <div class="recipe-block">
+        <h2>INFRASTRUCTURE: VESSELS & EQUIPMENT</h2>
+        <table>
+          <thead>
+            <tr><th>Utensil</th><th>Quantity</th><th>Use Case</th></tr>
+          </thead>
+          <tbody>
+            ${plan.masterLogistics.equipment.map(eq => `
+              <tr>
+                <td>${eq.utensil}</td>
+                <td>${eq.quantity}</td>
+                <td>${eq.useCase}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // 3. Master Cutlery List
+    content += `
+      <div class="recipe-block">
+        <h2>RITUAL ELEMENTS: THAAL CUTLERY & SERVICE</h2>
+        <table>
+          <thead>
+            <tr><th>Item</th><th>Total Needed</th><th>Use Case</th></tr>
+          </thead>
+          <tbody>
+            ${plan.masterLogistics.thaalCutlery.map(c => `
+              <tr>
+                <td>${c.item}</td>
+                <td>${c.totalNeeded}</td>
+                <td>${c.useCase}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // 4. Individual Course Recipes
+    content += `<h1>Individual Course Recipes</h1>`;
+    plan.dishes.forEach((dish) => {
+      content += `
+        <div class="recipe-block">
+          <h2>COURSE ${dish.sequence}: ${dish.recipe.title} (${dish.type})</h2>
+          <p><strong>Time:</strong> ${dish.recipe.time} | <strong>Heritage:</strong> ${dish.recipe.heritage}</p>
+          <p><em>${dish.recipe.description}</em></p>
+          
+          <h3>Ingredients</h3>
+          <ul>
+            ${dish.recipe.ingredients.map(ing => `<li>${ing}</li>`).join('')}
+          </ul>
+          
+          <h3>Instructions</h3>
+          <ol>
+            ${dish.recipe.instructions.map(step => `<li>${step}</li>`).join('')}
+          </ol>
+          
+          <div style="margin-top: 20px; padding: 15px; background: #fffcf0; border-left: 4px solid #DAA520; font-size: 0.9em; font-style: italic;">
+            <strong>Chef's Intuition:</strong> ${dish.chefIntuition}
+          </div>
+        </div>
+      `;
+    });
+
+    printContent("The Complete Orchestration Guide", content);
+  };
+
+  const printIngredients = () => {
+    if (!plan) return;
+    const items = plan.masterLogistics.ingredients.map(ing => `
+      <tr>
+        <td>${ing.item}</td>
+        <td>${ing.totalProcurement}</td>
+        <td>${ing.purpose}</td>
+      </tr>
+    `).join('');
+    
+    const content = `
+      <h2>Ingredient & Spice Inventory</h2>
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Total Procurement</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>${items}</tbody>
+      </table>
+    `;
+    printContent("Inventory: Ingredients & Spices", content);
+  };
+
+  const printEquipment = () => {
+    if (!plan) return;
+    const items = plan.masterLogistics.equipment.map(eq => `
+      <tr>
+        <td>${eq.utensil}</td>
+        <td>${eq.quantity}</td>
+        <td>${eq.useCase}</td>
+      </tr>
+    `).join('');
+    
+    const content = `
+      <h2>Vessels & Specialized Equipment</h2>
+      <table>
+        <thead>
+          <tr><th>Utensil</th><th>Quantity</th><th>Use Case</th></tr>
+        </thead>
+        <tbody>${items}</tbody>
+      </table>
+    `;
+    printContent("Inventory: Vessels & Equipment", content);
+  };
+
+  const printCutlery = () => {
+    if (!plan) return;
+    const items = plan.masterLogistics.thaalCutlery.map(c => `
+      <tr>
+        <td>${c.item}</td>
+        <td>${c.totalNeeded}</td>
+        <td>${c.useCase}</td>
+      </tr>
+    `).join('');
+    
+    const content = `
+      <h2>Thaal Cutlery & Service Elements</h2>
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Total Needed</th><th>Use Case</th></tr>
+        </thead>
+        <tbody>${items}</tbody>
+      </table>
+    `;
+    printContent("Inventory: Thaal Cutlery & Service", content);
+  };
+  const printOrchestrationManual = () => {
+    if (!plan) return;
+    
+    let content = `
+      <h2>Synchronized Timeline</h2>
+      <table>
+        <thead>
+          <tr><th>Time</th><th>Track</th><th>Action</th><th>Role</th><th>Sensory Cue</th></tr>
+        </thead>
+        <tbody>
+          ${plan.timeline.map(step => `
+            <tr>
+              <td style="font-weight:bold">${step.timeRelative}</td>
+              <td>${step.track}</td>
+              <td>${step.action}</td>
+              <td>${step.role}</td>
+              <td><em>${step.sensoryCue}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      
+      <h2>Procurement & Master Inventory</h2>
+      <h3>Ingredients & Spices</h3>
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Category</th><th>Total Needed</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          ${plan.masterLogistics.ingredients.map(ing => `
+            <tr>
+              <td>${ing.item}</td>
+              <td>${ing.category || 'N/A'}</td>
+              <td style="color:#DAA520; font-weight:bold">${ing.totalProcurement}</td>
+              <td>${ing.purpose}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <h3>Vessels & Equipment</h3>
+      <table>
+        <thead>
+          <tr><th>Utensil</th><th>Quantity</th><th>Use Case</th></tr>
+        </thead>
+        <tbody>
+          ${plan.masterLogistics.equipment.map(eq => `
+            <tr>
+              <td>${eq.utensil}</td>
+              <td>${eq.quantity}</td>
+              <td>${eq.useCase}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <h3>Thaal Cutlery</h3>
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Total Needed</th><th>Use Case</th></tr>
+        </thead>
+        <tbody>
+          ${plan.masterLogistics.thaalCutlery.map(c => `
+            <tr>
+              <td>${c.item}</td>
+              <td>${c.totalNeeded}</td>
+              <td>${c.useCase}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    
+    printContent("The Master Orchestration Manual", content);
+  };
+
+  const generateThaalPlan = async () => {
+    console.log("Starting Thaal Plan Generation...");
     try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Gemini API Key is not configured. Please check your settings.");
+      }
+      
+      setIsGenerating(true);
+      const ai = new GoogleGenAI({ apiKey });
+      const totalGuests = thaalCount * 8;
+      
+      const prompt = `Act as a master Dawoodi Bohra Thaal Orchestrator with 40 years of experience serving the high nobility.
+      Create a complete, uncompromising Thaal Plan for ${thaalCount} Thaals (Total Guests: ${totalGuests}). 
+      
+      EVENT CONTEXT:
+      - LOCATION: ${location || 'Global (Traditional)'}
+      - MONTH/SEASON: ${month}
+      
+      A Thaal must strictly follow the traditional sequence: 
+      1. First Meethas (Sweet) - Must be rich and welcoming.
+      2. First Kharaas (Savory) - Must complement the preceding sweet.
+      3. Second Meethas - Refreshing and elegant.
+      4. Second Kharaas - Decadent and substantial.
+      5. Main Course (Gavri/Jaman) - The heart of the Thaal (Rice/Lisan/Kari/Biryani).
+      6. Accompaniments (Salads/Dips/Zubaan-ni-Chatas) - Essential for palate resets.
+      
+      IMPORTANT SEASONAL & REGIONAL CONSTRAINTS:
+      - In ${month} at ${location || 'this location'}, adjust the menu accordingly.
+      - If Summer: Prioritize cooling elements (curd, fruits, Aamras if appropriate).
+      - If Winter: Prioritize warming spices and rich textures.
+      
+      Requirements:
+      - DISHES: Provide exactly 6 courses following the sequence. Provide high-quality heritage titles. Each dish MUST include a complete 'recipe' object with a full list of 'ingredients' and a detailed set of 'instructions' (RecipeStep[]).
+      - TIMELINE: A synchronized 25+ step sequence. Every step MUST belong to one of these three tracks: "Active Cooking", "Host Rituals", or "Prep/Plating". 
+      - LOGISTICS: 60+ ingredients grouped by category. Specific tools like Patiya, Deg, Sini, Safra.
+      - AUDITS: 
+          - QA Audit Scoring: 'score' MUST be between 0-100. 100 is perfection. Do NOT output ridiculously low scores like 9.5% unless there is a catastrophic tradition failure. Aim for realistic, high-standard scores (80-98).
+          - Master Chef Audit: Provide a "Brutal Take" that is professional, authoritative, and traditional.
+      
+      Output format MUST be JSON. Ensure 'track' in timeline is NEVER null or undefined.`;
+
+      console.log(`Requesting orchestration for ${thaalCount} Thaals (${totalGuests} guests)...`);
+      
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents: prompt,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -244,6 +458,8 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
               title: { type: Type.STRING },
               guestCount: { type: Type.NUMBER },
               masterCritique: { type: Type.STRING },
+              pairingNotes: { type: Type.STRING },
+              chefSecret: { type: Type.STRING },
               engineeringAudit: {
                 type: Type.OBJECT,
                 properties: {
@@ -274,8 +490,8 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                     items: {
                       type: Type.OBJECT,
                       properties: {
-                        type: { type: Type.STRING, enum: ["Hygiene", "Ritual", "Logistics"] },
-                        severity: { type: Type.STRING, enum: ["Low", "High", "CRITICAL"] },
+                        type: { type: Type.STRING },
+                        severity: { type: Type.STRING },
                         message: { type: Type.STRING }
                       },
                       required: ["type", "severity", "message"]
@@ -291,10 +507,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                   physicalSecurity: { type: Type.STRING },
                   authenticityFirewall: {
                     type: Type.OBJECT,
-                    properties: {
-                      status: { type: Type.STRING, enum: ["VERIFIED", "COMPROMISED"] },
-                      notes: { type: Type.STRING }
-                    },
+                    properties: { status: { type: Type.STRING }, notes: { type: Type.STRING } },
                     required: ["status", "notes"]
                   }
                 },
@@ -306,7 +519,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                   deploymentReadiness: { type: Type.STRING },
                   failoverProtocol: { type: Type.STRING },
                   scalingPhysics: { type: Type.STRING },
-                  ritualLatency: { type: Type.STRING, enum: ["Low", "Moderate", "High"] }
+                  ritualLatency: { type: Type.STRING }
                 },
                 required: ["deploymentReadiness", "failoverProtocol", "scalingPhysics", "ritualLatency"]
               },
@@ -315,7 +528,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                 properties: {
                   frictionPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
                   chaosFactor: { type: Type.NUMBER },
-                  bohIntegrity: { type: Type.STRING, enum: ["SOLID", "VULNERABLE"] },
+                  bohIntegrity: { type: Type.STRING },
                   agentRecommendation: { type: Type.STRING }
                 },
                 required: ["frictionPoints", "chaosFactor", "bohIntegrity", "agentRecommendation"]
@@ -344,7 +557,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                 type: Type.OBJECT,
                 properties: {
                   resourceOptimization: { type: Type.STRING },
-                  marketReadiness: { type: Type.STRING, enum: ["Private", "Celebration", "Industrial"] },
+                  marketReadiness: { type: Type.STRING },
                   theLeaver: { type: Type.STRING },
                   strategicMoat: { type: Type.STRING }
                 },
@@ -354,6 +567,25 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                 type: Type.OBJECT,
                 properties: {
                   selectionLogic: { type: Type.STRING },
+                  tasteSymphony: { type: Type.STRING },
+                  textureMapping: { type: Type.STRING },
+                  palateModulation: { type: Type.STRING },
+                  flavorProgression: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        course: { type: Type.STRING },
+                        transition: { type: Type.STRING },
+                        palateEffect: { type: Type.STRING }
+                      },
+                      required: ["course", "transition", "palateEffect"]
+                    }
+                  },
+                  efficiencySecrets: { type: Type.STRING },
+                  efficiencyAnalysis: { type: Type.STRING },
+                  costLevers: { type: Type.STRING },
+                  costOptimization: { type: Type.STRING },
                   allowedSubstitutions: {
                     type: Type.ARRAY,
                     items: {
@@ -377,28 +609,13 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                       },
                       required: ["dish", "forbidden", "consequence"]
                     }
-                  },
-                  tasteSymphony: { type: Type.STRING },
-                  textureMapping: { type: Type.STRING },
-                  efficiencySecrets: { type: Type.STRING },
-                  costLevers: { type: Type.STRING },
-                  palateModulation: { type: Type.STRING },
-                  flavorProgression: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        course: { type: Type.STRING },
-                        transition: { type: Type.STRING },
-                        palateEffect: { type: Type.STRING }
-                      },
-                      required: ["course", "transition", "palateEffect"]
-                    }
-                  },
-                  efficiencyAnalysis: { type: Type.STRING },
-                  costOptimization: { type: Type.STRING }
+                  }
                 },
-                required: ["selectionLogic", "tasteSymphony", "textureMapping", "palateModulation", "flavorProgression", "allowedSubstitutions", "forbiddenSubstitutions", "efficiencySecrets", "costLevers", "efficiencyAnalysis", "costOptimization"]
+                required: [
+                  "selectionLogic", "tasteSymphony", "textureMapping", "palateModulation", 
+                  "flavorProgression", "efficiencySecrets", "efficiencyAnalysis", 
+                  "costLevers", "costOptimization", "allowedSubstitutions", "forbiddenSubstitutions"
+                ]
               },
               masterLogistics: {
                 type: Type.OBJECT,
@@ -409,13 +626,14 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                       type: Type.OBJECT,
                       properties: {
                         item: { type: Type.STRING },
+                        category: { type: Type.STRING },
                         baseQuantity: { type: Type.STRING },
                         scaledQuantity: { type: Type.STRING },
                         emergencyBuffer: { type: Type.STRING },
                         totalProcurement: { type: Type.STRING },
                         purpose: { type: Type.STRING }
                       },
-                      required: ["item", "baseQuantity", "scaledQuantity", "emergencyBuffer", "totalProcurement", "purpose"]
+                      required: ["item", "category", "baseQuantity", "scaledQuantity", "emergencyBuffer", "totalProcurement", "purpose"]
                     }
                   },
                   equipment: {
@@ -447,9 +665,10 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                         item: { type: Type.STRING },
                         quantityPerThaal: { type: Type.NUMBER },
                         totalNeeded: { type: Type.NUMBER },
-                        wastageBuffer: { type: Type.NUMBER }
+                        wastageBuffer: { type: Type.NUMBER },
+                        useCase: { type: Type.STRING }
                       },
-                      required: ["item", "quantityPerThaal", "totalNeeded", "wastageBuffer"]
+                      required: ["item", "quantityPerThaal", "totalNeeded", "wastageBuffer", "useCase"]
                     }
                   }
                 },
@@ -465,28 +684,24 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                     type: Type.ARRAY,
                     items: {
                       type: Type.OBJECT,
-                      properties: {
-                        term: { type: Type.STRING },
-                        meaning: { type: Type.STRING }
-                      },
+                      properties: { term: { type: Type.STRING }, meaning: { type: Type.STRING } },
                       required: ["term", "meaning"]
                     }
                   }
                 },
                 required: ["hostSop", "serverSop", "guestProtocolBrief", "glossary"]
               },
-              pairingNotes: { type: Type.STRING },
               condiments: {
                 type: Type.ARRAY,
                 items: {
                   type: Type.OBJECT,
                   properties: {
                     name: { type: Type.STRING },
-                    type: { type: Type.STRING, enum: ["Pickle", "Chutney", "Raita", "Murabba"] },
+                    type: { type: Type.STRING },
                     description: { type: Type.STRING },
-                    pairingLogic: { type: Type.STRING }
+                    palateOrchestration: { type: Type.STRING }
                   },
-                  required: ["name", "type", "description", "pairingLogic"]
+                  required: ["name", "type", "description", "palateOrchestration"]
                 }
               },
               dishes: {
@@ -498,31 +713,31 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                     type: { type: Type.STRING },
                     platingPhysics: {
                       type: Type.OBJECT,
-                      properties: {
-                        location: { type: Type.STRING },
-                        temp: { type: Type.STRING },
-                        vesselMaterial: { type: Type.STRING, enum: ["Kansa", "Steel", "Ceramic", "Silver-Plated"] }
-                      },
+                      properties: { location: { type: Type.STRING }, temp: { type: Type.STRING }, vesselMaterial: { type: Type.STRING } },
                       required: ["location", "temp", "vesselMaterial"]
                     },
                     chefIntuition: { type: Type.STRING },
                     mastersFix: { type: Type.STRING },
-                    recipe: {
-                      type: Type.OBJECT,
-                      properties: {
-                        id: { type: Type.STRING },
-                        title: { type: Type.STRING },
-                        description: { type: Type.STRING },
-                        time: { type: Type.STRING },
-                        servings: { type: Type.STRING },
-                        difficulty: { type: Type.STRING },
-                        ingredients: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        instructions: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        heritage: { type: Type.STRING },
-                        image: { type: Type.STRING }
-                      },
-                      required: ["id", "title", "description", "time", "ingredients", "instructions", "heritage", "image"]
-                    }
+                        recipe: {
+                          type: Type.OBJECT,
+                          properties: {
+                            id: { type: Type.STRING },
+                            title: { type: Type.STRING },
+                            category: { type: Type.STRING, enum: ["Meethas", "Kharaas", "Jamaan", "Salad"] },
+                            description: { type: Type.STRING },
+                            image: { type: Type.STRING },
+                            time: { type: Type.STRING },
+                            servings: { type: Type.STRING },
+                            servingCount: { type: Type.NUMBER },
+                            flavorProfile: { type: Type.STRING, enum: ["Khatta-Mitth", "Zaikedaar", "Kurkura", "Masaledaar", "Malai", "Dhungaar", "Kharaas"] },
+                            cuisineType: { type: Type.STRING, enum: ["Traditional", "Fusion"] },
+                            difficulty: { type: Type.STRING, enum: ["Easy", "Medium", "Advanced"] },
+                            ingredients: { type: Type.ARRAY, items: { type: Type.STRING } },
+                            instructions: { type: Type.ARRAY, items: { type: Type.STRING } },
+                            heritage: { type: Type.STRING }
+                          },
+                          required: ["id", "title", "category", "description", "time", "servings", "servingCount", "flavorProfile", "cuisineType", "difficulty", "ingredients", "instructions", "heritage", "image"]
+                        }
                   },
                   required: ["sequence", "type", "recipe", "platingPhysics", "chefIntuition", "mastersFix"]
                 }
@@ -533,7 +748,10 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                   type: Type.OBJECT,
                   properties: {
                     stage: { type: Type.STRING },
-                    track: { type: Type.STRING, enum: ["Active Cooking", "Host Rituals", "Prep/Plating"] },
+                    track: { 
+              type: Type.STRING, 
+              description: "Must be exactly one of: 'Active Cooking', 'Host Rituals', 'Prep/Plating'" 
+            },
                     timeRelative: { type: Type.STRING },
                     action: { type: Type.STRING },
                     sensoryCue: { type: Type.STRING },
@@ -542,64 +760,58 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                     dishId: { type: Type.STRING },
                     role: { type: Type.STRING }
                   },
-                  required: ["stage", "timeRelative", "action", "role", "sensoryCue", "coordinationNote", "atmosphericTrigger"]
+                  required: ["stage", "track", "timeRelative", "action", "role", "sensoryCue", "coordinationNote", "atmosphericTrigger", "dishId"]
                 }
               },
               etiquette: {
                 type: Type.ARRAY,
                 items: {
                   type: Type.OBJECT,
-                  properties: {
-                    ritual: { type: Type.STRING },
-                    instruction: { type: Type.STRING }
-                  },
+                  properties: { ritual: { type: Type.STRING }, instruction: { type: Type.STRING } },
                   required: ["ritual", "instruction"]
                 }
               },
-              chefSecret: { type: Type.STRING },
               atmosphere: {
                 type: Type.OBJECT,
-                properties: {
-                  lighting: { type: Type.STRING },
-                  scent: { type: Type.STRING },
-                  vibe: { type: Type.STRING }
-                },
+                properties: { lighting: { type: Type.STRING }, scent: { type: Type.STRING }, vibe: { type: Type.STRING } },
                 required: ["lighting", "scent", "vibe"]
               },
               complementarySuggestions: {
                 type: Type.ARRAY,
                 items: {
                   type: Type.OBJECT,
-                  properties: {
-                    dishType: { type: Type.STRING },
-                    suggestedFlavor: { type: Type.STRING },
-                    reason: { type: Type.STRING }
-                  },
+                  properties: { dishType: { type: Type.STRING }, suggestedFlavor: { type: Type.STRING }, reason: { type: Type.STRING } },
                   required: ["dishType", "suggestedFlavor", "reason"]
                 }
               }
             },
-            required: ["title", "guestCount", "masterCritique", "engineeringAudit", "qaAudit", "securityAudit", "releaseAudit", "logisticalAudit", "masterChefAudit", "safetyAudit", "strategicAudit", "combinationsAudit", "masterLogistics", "documentationAudit", "pairingNotes", "condiments", "dishes", "timeline", "etiquette", "chefSecret", "atmosphere", "complementarySuggestions"]
+            required: ["title", "guestCount", "masterCritique", "pairingNotes", "chefSecret", "engineeringAudit", "qaAudit", "securityAudit", "releaseAudit", "logisticalAudit", "masterChefAudit", "safetyAudit", "strategicAudit", "combinationsAudit", "masterLogistics", "documentationAudit", "condiments", "dishes", "timeline", "etiquette", "atmosphere", "complementarySuggestions"]
           }
         }
       });
-      
+
       console.log("AI Response received, parsing...");
-      const text = response.text;
-      if (!text) throw new Error("Empty response from AI");
-      
-      try {
-        const parsedPlan = JSON.parse(text);
-        setPlan(parsedPlan);
-      } catch (parseError) {
-        console.error("JSON Parse Error:", parseError, text);
-        throw new Error("The Orchestrator's recipe was too complex to decode. Please try again.");
+      let text = response.text || "";
+      if (!text) {
+        throw new Error("No response from the digital Daawat experts.");
       }
+      
+      // Sanitise JSON response
+      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsedPlan = JSON.parse(jsonStr);
+      parsedPlan.location = location;
+      parsedPlan.month = month;
+      setPlan(parsedPlan);
+      setCompletedSteps([]);
+      setCurrentStep(0);
+      setActiveTab('overview');
     } catch (error) {
-      console.error("Failed to generate Thaal plan:", error);
-      alert("The Orchestrator encountered a culinary complexity: " + (error instanceof Error ? error.message : "Synchronization failed."));
+      console.error("Detailed Error in generateThaalPlan:", error);
+      const errorMessage = error instanceof Error ? error.message : "Synchronization failed.";
+      alert("Orchestration Error: " + errorMessage);
     } finally {
       setIsGenerating(false);
+      console.log("Generation process finished.");
     }
   };
 
@@ -613,32 +825,175 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
       }`}
     >
       <div className={`max-w-7xl mx-auto px-6 pt-32 pb-20 ${kitchenMode ? 'font-mono' : ''}`}>
-        <div className="flex justify-between items-start mb-16">
-          <div>
-            <h2 className={`uppercase text-[10px] tracking-mega font-bold mb-4 transition-colors ${
-              kitchenMode ? 'text-red-500' : 'text-brand-gold'
-            }`}>Elite Dawat Management</h2>
-            <h1 className={`text-6xl font-serif transition-colors ${
-              kitchenMode ? 'text-white' : 'text-brand-cream'
-            }`}>Thaal Orchestration</h1>
+        {plan && kitchenMode ? (
+          <div className="fixed inset-0 bg-black z-[400] flex flex-col font-sans overflow-hidden">
+            {/* High Contrast Kitchen Interface */}
+            <header className="p-10 border-b-8 border-green-600 bg-zinc-950 flex items-center justify-between">
+              <div className="flex items-center gap-12">
+                <button 
+                  onClick={() => setKitchenMode(false)}
+                  className="w-24 h-24 bg-green-600 text-black flex items-center justify-center rounded-3xl hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(22,163,74,0.3)]"
+                >
+                  <X className="w-12 h-12" />
+                </button>
+                <div>
+                  <h2 className="text-green-500 uppercase text-xs font-black tracking-mega mb-2">Tactile Command Center</h2>
+                  <div className="flex items-center gap-6">
+                    <h1 className="text-4xl text-white font-black">ORCHESTRATING {plan.guestCount} GUESTS</h1>
+                    <button 
+                      onClick={printOrchestrationManual}
+                      className="flex items-center gap-3 px-6 py-3 bg-green-900/40 border border-green-500/30 text-green-500 text-[10px] font-black uppercase tracking-widest hover:bg-green-600 hover:text-black transition-all rounded-2xl shadow-[0_0_20px_rgba(22,163,74,0.1)] group"
+                    >
+                      <FileText className="w-4 h-4 group-hover:scale-110 transition-transform" /> 
+                      Print Orchestration PDF
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-8">
+                <div className="px-10 py-5 bg-green-900/40 border-2 border-green-500 rounded-3xl text-center">
+                  <span className="text-[10px] uppercase font-black text-green-500 block mb-1 font-sans">Ritual Gauge</span>
+                  <span className="text-4xl font-black text-white font-mono">{currentStage || 1}/8</span>
+                </div>
+              </div>
+            </header>
+
+            <div className="flex-1 flex overflow-hidden">
+              {/* Vertical Step-Progressor (High Contrast) */}
+              <aside className="w-[450px] bg-zinc-950 border-r-4 border-green-900/50 overflow-y-auto custom-scrollbar p-8 space-y-4">
+                 <h4 className="text-[10px] uppercase font-black text-green-500 mb-8 border-b-2 border-green-900/30 pb-4 tracking-widest text-center font-sans">Ritual Workflow</h4>
+                 {plan.timeline.map((step, i) => (
+                   <button 
+                    key={i} 
+                    onClick={() => setCurrentStep(i)}
+                    className={`w-full text-left p-10 rounded-3xl border-4 transition-all relative ${
+                      i === currentStep 
+                      ? 'bg-green-600 border-green-400 text-black scale-[1.02] shadow-[0_0_50px_rgba(22,163,74,0.2)]'
+                      : completedSteps.includes(i)
+                      ? 'bg-green-900/40 border-green-500/50 text-white/60'
+                      : 'bg-zinc-900 border-white/5 text-white/30'
+                    }`}
+                   >
+                     {completedSteps.includes(i) && (
+                       <div className="absolute top-4 right-4">
+                         <CheckCircle2 className={`w-6 h-6 ${i === currentStep ? 'text-black' : 'text-green-500'}`} />
+                       </div>
+                     )}
+                     <div className="flex justify-between items-start mb-6">
+                        <span className="text-4xl font-black font-mono">{step.timeRelative}</span>
+                        <span className={`text-[10px] uppercase font-black px-3 py-1 rounded ${i === currentStep ? 'bg-black text-green-600' : 'bg-white/10 text-white/40'}`}>{step.role}</span>
+                     </div>
+                     <p className={`text-2xl font-bold font-serif leading-tight ${i === currentStep ? 'text-black' : 'text-white/60'}`}>{step.action}</p>
+                   </button>
+                 ))}
+              </aside>
+
+              {/* Central Command Focus */}
+              <main className="flex-1 overflow-y-auto p-12 md:p-24 bg-black flex flex-col items-center justify-center text-center">
+                 <div className="max-w-5xl space-y-16">
+                    <div className="inline-block px-12 py-4 bg-green-500 text-black text-xl font-black rounded-full uppercase tracking-mega mb-12 shadow-[0_0_30px_rgba(34,197,94,0.4)] font-sans">
+                       ACTIVE MISSION
+                    </div>
+                    
+                    <h1 className="text-6xl md:text-9xl font-black text-white leading-none tracking-tight text-balance font-serif">
+                       {plan.timeline[currentStep]?.action || 'Prepare the Thaal'}
+                    </h1>
+
+                    <p className="text-3xl text-green-500 font-bold max-w-4xl opacity-80 leading-relaxed italic font-serif">
+                       "{plan.timeline[currentStep]?.coordinationNote || 'Synchronize with the host for optimal palate modulation.'}"
+                    </p>                     <div className="pt-24 flex items-center justify-center gap-12">
+                       <button 
+                         onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+                         className="w-32 h-32 rounded-full border-4 border-white/20 flex items-center justify-center text-white/40 hover:border-green-500 hover:text-green-500 transition-all font-sans"
+                       >
+                          <ChevronLeft className="w-16 h-16" />
+                       </button>
+                       <button 
+                         onClick={() => toggleStep(currentStep)}
+                         className={`w-48 h-48 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-[0_0_60px_rgba(22,163,74,0.4)] font-sans ${
+                           completedSteps.includes(currentStep) ? 'bg-green-600 text-black' : 'bg-zinc-800 text-green-500 border-4 border-green-500'
+                         }`}
+                       >
+                          <Check className="w-24 h-24" />
+                       </button>
+                       <button 
+                         onClick={() => setCurrentStep(Math.min(plan.timeline.length - 1, currentStep + 1))}
+                         className="w-32 h-32 rounded-full border-4 border-white/20 flex items-center justify-center text-white/40 hover:border-green-500 hover:text-green-500 transition-all font-sans"
+                       >
+                          <ChevronRight className="w-16 h-16" />
+                       </button>
+                    </div>
+                 </div>
+              </main>
+            </div>
+
+           
           </div>
-          
-          <div className="flex items-center gap-4">
-            {plan && (
+        ) : (
+          <div className="flex justify-between items-start mb-16">
+            <div className="flex items-start gap-6">
               <button 
-                onClick={() => setKitchenMode(!kitchenMode)}
-                className={`px-6 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${
-                  kitchenMode 
-                    ? 'bg-red-500 text-black border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]' 
-                    : 'glass-card text-brand-gold hover:bg-brand-gold/10'
-                }`}
+                onClick={onClose}
+                className="mt-2 p-2 hover:bg-white/5 text-white/40 hover:text-white transition-all rounded-full border border-white/10"
               >
-                <Play className={`w-3.5 h-3.5 ${kitchenMode ? 'animate-pulse' : ''}`} />
-                {kitchenMode ? 'Kitchen Interface Active' : 'Enter Kitchen Mode'}
+                <X className="w-5 h-5" />
               </button>
-            )}
+              <div>
+                <h2 className={`uppercase text-[10px] tracking-mega font-bold mb-4 transition-colors ${
+                  kitchenMode ? 'text-red-500' : 'text-brand-gold font-black'
+                }`}>Elite Dawat Management</h2>
+                <h1 className={`text-6xl font-serif transition-colors ${
+                  kitchenMode ? 'text-white font-black' : 'text-brand-cream'
+                }`}>Thaal Orchestration</h1>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              {plan && (
+                <>
+                  <button 
+                    onClick={() => onSavePlan(plan)}
+                    disabled={isArchived}
+                    className={`px-6 py-6 rounded-full border border-brand-gold/30 text-brand-gold text-[10px] uppercase font-bold tracking-widest hover:bg-brand-gold/10 transition-all flex items-center gap-2 ${isArchived ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <Library className="w-4 h-4" /> {isArchived ? 'Plan Archived' : 'Save Thaal'}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (confirm("Reset everything? Current orchestration will be wiped.")) {
+                        setPlan(null);
+                        onStageChange?.(0);
+                        setLocation('');
+                        setMonth('January');
+                        setThaalCount(1);
+                        setCompletedSteps([]);
+                        setCurrentStep(0);
+                        setIsGenerating(false);
+                        setKitchenMode(false);
+                        setActiveTab('overview');
+                      }
+                    }}
+                    className="px-6 py-6 rounded-full border border-red-500/30 text-red-400 text-[10px] uppercase font-bold tracking-widest hover:bg-red-500/10 transition-all flex items-center gap-2"
+                  >
+                    <RotateCcw className="w-4 h-4" /> Reset Orchestration
+                  </button>
+                  <button 
+                    onClick={() => setKitchenMode(!kitchenMode)}
+                    className={`px-12 py-6 rounded-full text-xs font-black uppercase tracking-widest transition-all flex items-center gap-4 ${
+                      kitchenMode 
+                        ? 'bg-red-500 text-black border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]' 
+                        : 'bg-brand-gold text-brand-bg hover:bg-white shadow-2xl'
+                    }`}
+                  >
+                    <Play className={`w-5 h-5 ${kitchenMode ? 'animate-pulse' : ''}`} />
+                    {kitchenMode ? 'Kitchen Interface Active' : 'Enter Kitchen Mode'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {!plan ? (
           <div className="max-w-xl mx-auto text-center space-y-12 py-20">
@@ -653,8 +1008,40 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                 "The Thaal is not a collection of recipes; it is the orchestration of Barakat (blessing), hospitality, and sensory rhythm."
               </p>
               <p className="text-white/40 text-sm">
-                As an expert with 40 years in the Dawat, I will calculate the precise sequence of Meethas and Khara to ensure your guests experience the pinnacle of Bohra culinary heritage.
+                For this Dawat, I will calculate the precise sequence of Meethas and Kharaas to ensure your guests experience the pinnacle of Bohra culinary heritage.
               </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+              <div className="space-y-4">
+                <label className="text-[10px] uppercase font-bold tracking-widest text-brand-gold block text-left">Wedding Location</label>
+                <div className="relative group">
+                  <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-gold/40 group-focus-within:text-brand-gold transition-colors" />
+                  <input 
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="e.g. Mumbai, Dubai, London..."
+                    className="w-full bg-white/[0.03] border border-white/10 py-4 pl-12 pr-6 text-xs text-brand-cream focus:outline-none focus:border-brand-gold/50 transition-all placeholder:text-white/20 uppercase tracking-widest"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-[10px] uppercase font-bold tracking-widest text-brand-gold block text-left">Wedding Month</label>
+                <div className="relative group">
+                  <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-gold/40 group-focus-within:text-brand-gold transition-colors" />
+                  <select 
+                    value={month}
+                    onChange={(e) => setMonth(e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/10 py-4 pl-12 pr-6 text-xs text-brand-cream focus:outline-none focus:border-brand-gold/50 transition-all appearance-none uppercase tracking-widest"
+                  >
+                    {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
+                      <option key={m} value={m} className="bg-brand-bg">{m}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -709,10 +1096,28 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                   <CheckCircle2 className="w-3 h-3" /> Orchestration Complete
                 </div>
                 <h2 className="text-4xl font-serif text-brand-cream">{plan.title}</h2>
+                <div className="flex gap-4 items-center">
+                  {plan.location && (
+                    <div className="flex items-center gap-2 text-white/40 text-[10px] uppercase tracking-widest">
+                      <Globe className="w-3 h-3 text-brand-gold" /> {plan.location}
+                    </div>
+                  )}
+                  {plan.month && (
+                    <div className="flex items-center gap-2 text-white/40 text-[10px] uppercase tracking-widest">
+                      <Clock className="w-3 h-3 text-brand-gold" /> {plan.month}
+                    </div>
+                  )}
+                </div>
                 <p className="text-white/40 max-w-2xl font-light italic">"{plan.pairingNotes}"</p>
               </div>
               
-              <div className="flex gap-4">
+            <div className="flex gap-4">
+                <button 
+                  onClick={printAllRecipes}
+                  className="px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all bg-white/5 text-white/60 hover:bg-white hover:text-brand-bg flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" /> Print All Recipes
+                </button>
                 {[
                   { id: 'overview', label: 'The Experience' },
                   { id: 'timeline', label: 'Synchronized Timeline' },
@@ -846,12 +1251,21 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                              )}
                            </AnimatePresence>
 
-                           <div className="flex gap-4">
+                           <div className="flex flex-wrap gap-4">
                              <button 
                                onClick={() => onStartKitchenMode(dish.recipe)}
                                className="flex-1 py-4 border border-white/5 text-[10px] uppercase font-bold tracking-widest text-brand-gold hover:bg-brand-gold hover:text-brand-bg transition-all flex items-center justify-center gap-2"
                              >
                                <Play className="w-3 h-3 fill-current" /> Open in Kitchen
+                             </button>
+                             <button 
+                               onClick={() => {
+                                 onSaveRecipe(dish.recipe);
+                                 alert(`Recipe for ${dish.recipe.title} saved to your archive.`);
+                               }}
+                               className="flex-1 py-4 border border-brand-gold/20 text-[10px] uppercase font-bold tracking-widest text-brand-gold hover:bg-brand-gold/10 transition-all flex items-center justify-center gap-2"
+                             >
+                               <Library className="w-3 h-3" /> Save Recipe
                              </button>
                              {expandedDishIndex !== i && (
                                <button 
@@ -868,23 +1282,45 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                   </div>
 
                   {/* Zubaan-ni-Chatas (Condiments) Section */}
-                  <div className="glass-card p-12 border-brand-gold/30 bg-brand-gold/5 mt-12">
-                    <h3 className="text-[10px] uppercase tracking-mega font-bold text-brand-gold mb-10 flex items-center gap-3">
-                      <Sparkles className="w-4 h-4" /> Zubaan-ni-Chatas
-                    </h3>
+                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-white/5 pb-8">
+                       <div>
+                          <h3 className="text-[10px] uppercase tracking-mega font-bold text-brand-gold">Palate Cleansers</h3>
+                          <h2 className="text-3xl font-serif text-brand-cream">Zubaan-ni-Chatas</h2>
+                       </div>
+                       <p className="text-xs text-white/40 italic max-w-xl text-right">
+                          "Taste on the Tongue" — These specialized condiments are the critical balancers of the Bohra Thaal, designed to reset the palate between the Meethas and Kharaas.
+                       </p>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                        {plan.condiments?.map((item, i) => (
-                         <div key={i} className="space-y-4 p-6 bg-white/5 rounded-2xl border border-white/5 hover:border-brand-gold/20 transition-all">
-                           <div className="flex items-center justify-between">
-                             <span className="text-[8px] uppercase font-bold text-brand-gold/60 tracking-widest">{item.type}</span>
+                         <div key={i} className="group p-8 glass-card border-brand-gold/20 bg-brand-bg relative overflow-hidden transition-all duration-500 hover:border-brand-gold/50">
+                           <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-500">
+                              <Sparkles className="w-12 h-12 text-brand-gold" />
                            </div>
-                           <div className="text-xl font-serif text-brand-cream">{item.name}</div>
-                           <p className="text-xs text-white/50 font-light leading-relaxed">{item.description}</p>
-                           <div className="pt-4 mt-4 border-t border-white/5">
-                             <div className="flex items-center gap-2 mb-2 text-[9px] uppercase font-bold text-brand-gold/40">
-                               <Target className="w-3 h-3" /> Pairing Logic
+                           
+                           <div className="relative z-10 space-y-6">
+                             <div className="flex items-center gap-3">
+                               <div className="w-8 h-8 rounded-lg bg-brand-gold/10 flex items-center justify-center text-brand-gold">
+                                  <div className="text-[10px] font-bold">0{i + 1}</div>
+                               </div>
+                               <span className="text-[10px] uppercase font-bold text-brand-gold tracking-[0.2em]">{item.type}</span>
                              </div>
-                             <p className="text-[10px] text-white/40 italic leading-relaxed">{item.pairingLogic}</p>
+
+                             <div>
+                               <div className="text-2xl font-serif text-brand-cream mb-2 group-hover:text-brand-gold transition-colors">{item.name}</div>
+                               <p className="text-sm text-white/50 font-light leading-relaxed">{item.description}</p>
+                             </div>
+
+                             <div className="pt-6 border-t border-white/5">
+                               <div className="flex items-center gap-2 mb-3 text-[9px] uppercase font-bold text-brand-gold/60">
+                                 <Activity className="w-3.4 h-3.4 text-brand-gold animate-pulse" /> Palate Orchestration
+                               </div>
+                               <p className="text-xs text-white/40 italic leading-relaxed bg-brand-gold/5 p-4 rounded-xl border border-brand-gold/10">
+                                 {item.palateOrchestration}
+                               </p>
+                             </div>
                            </div>
                          </div>
                        ))}
@@ -934,62 +1370,150 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
 
                 {/* Ingredients Master List */}
                 <div className="space-y-8">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
                       <h3 className="text-[10px] uppercase tracking-mega font-bold text-brand-gold mb-2">Procurement Directive</h3>
                       <h2 className="text-3xl font-serif text-brand-cream">Exhaustive Ingredient & Spice Inventory</h2>
                     </div>
-                    <div className="px-6 py-3 bg-brand-gold/10 border border-brand-gold/20 rounded-full text-brand-gold text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                       <ShieldAlert className="w-4 h-4" /> Comprehensive Audit
+                    <div className="flex items-center gap-4">
+                      <div className="relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-brand-gold transition-colors" />
+                        <input 
+                          type="text" 
+                          placeholder="Search ingredients..."
+                          value={ingSearch}
+                          onChange={(e) => setIngSearch(e.target.value)}
+                          className="bg-white/5 border border-white/10 rounded-full py-3 pl-12 pr-6 text-sm text-brand-cream focus:outline-none focus:border-brand-gold/40 transition-all w-full md:w-64"
+                        />
+                      </div>
+                      <button 
+                        onClick={printIngredients}
+                        className="px-6 py-3 border border-brand-gold/30 text-brand-gold text-[10px] uppercase font-black tracking-widest rounded-full hover:bg-brand-gold hover:text-brand-bg transition-all flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" /> Print PDF
+                      </button>
                     </div>
                   </div>
 
                   <div className="glass-card rounded-[2rem] overflow-hidden border-white/5">
                     <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
                       <table className="w-full border-collapse">
-                        <thead className="sticky top-0 bg-brand-bg/95 backdrop-blur-md z-10">
-                          <tr className="border-b border-white/10 text-left">
-                            <th className="py-6 px-8 text-[10px] uppercase font-bold text-white/30 tracking-widest">Item / Detail</th>
-                            <th className="py-6 px-4 text-[10px] uppercase font-bold text-white/30 tracking-widest text-center">Per Guest</th>
-                            <th className="py-6 px-4 text-[10px] uppercase font-bold text-white/30 tracking-widest text-center text-brand-gold">Total Procurement</th>
-                            <th className="py-6 px-8 text-[10px] uppercase font-bold text-white/30 tracking-widest text-right">Usage Purpose</th>
+                        <thead className="sticky top-0 bg-zinc-900 z-10 border-b-8 border-brand-gold">
+                          <tr className="text-left">
+                            <th className="py-6 px-8 text-[10px] uppercase font-bold text-white/30 tracking-widest cursor-pointer hover:text-brand-gold transition-colors" onClick={() => setIngSort({ field: 'item', dir: ingSort?.field === 'item' && ingSort.dir === 'asc' ? 'desc' : 'asc' })}>
+                               <div className="flex items-center gap-2">Item <ArrowUpDown className="w-3 h-3" /></div>
+                            </th>
+                            <th className="py-6 px-4 text-[10px] uppercase font-bold text-white/30 tracking-widest text-center">Base (Unit)</th>
+                            <th className="py-6 px-4 text-[10px] uppercase font-bold text-white/30 tracking-widest text-center">Scaled</th>
+                            <th className="py-6 px-4 text-[10px] uppercase font-bold text-white/30 tracking-widest text-center">Buffer</th>
+                            <th className="py-6 px-4 text-[10px] uppercase font-bold text-white/30 tracking-widest text-center text-brand-gold cursor-pointer hover:text-white transition-colors" onClick={() => setIngSort({ field: 'totalProcurement', dir: ingSort?.field === 'totalProcurement' && ingSort.dir === 'asc' ? 'desc' : 'asc' })}>
+                               <div className="flex items-center justify-center gap-2">Total Procurement <ArrowUpDown className="w-3 h-3" /></div>
+                            </th>
+                            <th className="py-6 px-8 text-[10px] uppercase font-bold text-white/30 tracking-widest text-right">Purpose</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                          {plan.masterLogistics.ingredients.map((ing, i) => (
-                            <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
-                              <td className="py-6 px-8">
-                                <div className="text-brand-cream font-medium group-hover:text-brand-gold transition-colors">{ing.item}</div>
-                              </td>
-                              <td className="py-6 px-4 text-center text-white/40 font-mono text-xs">{ing.baseQuantity}</td>
-                              <td className="py-6 px-4 text-center">
-                                <div className="text-brand-gold font-mono font-bold">{ing.totalProcurement}</div>
-                                <div className="text-[8px] text-white/20 uppercase font-black tracking-tighter">Scaled + 25% Buffer</div>
-                              </td>
-                              <td className="py-6 px-8 text-right max-w-xs">
-                                <span className="text-[10px] text-white/40 italic">{ing.purpose}</span>
-                              </td>
-                            </tr>
-                          ))}
+                          {(() => {
+                            const filtered = (plan.masterLogistics.ingredients || [])
+                              .filter(ing => 
+                                ing.item.toLowerCase().includes(ingSearch.toLowerCase()) || 
+                                ing.purpose.toLowerCase().includes(ingSearch.toLowerCase()) ||
+                                (ing.category && ing.category.toLowerCase().includes(ingSearch.toLowerCase()))
+                              );
+                            
+                            const categories = Array.from(new Set(filtered.map(ing => ing.category || 'Other')));
+                            
+                            return categories.length > 0 ? categories.map(cat => (
+                              <React.Fragment key={cat}>
+                                <tr className="bg-white/[0.03]">
+                                  <td colSpan={6} className="py-4 px-8 border-l-4 border-brand-gold">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse" />
+                                      <span className="text-[10px] uppercase font-black tracking-widest text-brand-gold">{cat}</span>
+                                      <span className="text-[10px] text-white/20 font-light lowercase">({filtered.filter(i => (i.category || 'Other') === cat).length} items)</span>
+                                    </div>
+                                  </td>
+                                </tr>
+                                {filtered
+                                  .filter(ing => (ing.category || 'Other') === cat)
+                                  .sort((a, b) => {
+                                    if (!ingSort) return 0;
+                                    const valA = String((a as any)[ingSort.field] || '');
+                                    const valB = String((b as any)[ingSort.field] || '');
+                                    return ingSort.dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                                  })
+                                  .map((ing, i) => (
+                                    <tr key={`${cat}-${i}`} className="hover:bg-white/[0.02] transition-colors group">
+                                      <td className="py-6 px-8">
+                                        <div className="text-brand-cream font-medium group-hover:text-brand-gold transition-colors">{ing.item}</div>
+                                      </td>
+                                      <td className="py-6 px-4 text-center text-white/40 font-mono text-xs italic">{ing.baseQuantity}</td>
+                                      <td className="py-6 px-4 text-center text-white/60 font-mono text-xs">{ing.scaledQuantity}</td>
+                                      <td className="py-6 px-4 text-center text-red-400 font-mono text-[10px]">+{ing.emergencyBuffer}</td>
+                                      <td className="py-6 px-4 text-center">
+                                        <div className="text-brand-gold font-mono font-bold">{ing.totalProcurement}</div>
+                                        <div className="text-[8px] text-white/20 uppercase font-black tracking-tighter">Ready for Dawat</div>
+                                      </td>
+                                      <td className="py-6 px-8 text-right max-w-xs">
+                                        <span className="text-[10px] text-white/40 italic">{ing.purpose}</span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                              </React.Fragment>
+                            )) : (
+                              <tr>
+                                <td colSpan={6} className="py-20 text-center text-white/20 italic font-light">
+                                  No items found in the master inventory matching your search.
+                                </td>
+                              </tr>
+                            );
+                          })()}
                         </tbody>
                       </table>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                   {/* Equipment & Utensils */}
                   <div className="lg:col-span-2 space-y-8">
-                    <div className="flex items-center gap-3">
-                       <ChefHat className="w-5 h-5 text-brand-gold" />
-                       <h3 className="text-[10px] uppercase tracking-mega font-bold text-brand-gold">Culinary Equipment & Specialized Vessels</h3>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="flex items-center gap-3">
+                         <ChefHat className="w-5 h-5 text-brand-gold" />
+                         <h3 className="text-[10px] uppercase tracking-mega font-bold text-brand-gold">Vessels & Specialized Equipment</h3>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="relative group">
+                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-brand-gold transition-colors" />
+                          <input 
+                            type="text" 
+                            placeholder="Search vessels..."
+                            value={equipSearch}
+                            onChange={(e) => setEquipSearch(e.target.value)}
+                            className="bg-white/5 border border-white/10 rounded-full py-2 pl-10 pr-6 text-[11px] text-brand-cream focus:outline-none focus:border-brand-gold/40 transition-all w-full md:w-56"
+                          />
+                        </div>
+                        <button 
+                          onClick={printEquipment}
+                          className="p-2 border border-brand-gold/30 text-brand-gold rounded-full hover:bg-brand-gold hover:text-brand-bg transition-all"
+                          title="Print Equipment List"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-4 custom-scrollbar">
-                      {plan.masterLogistics.equipment.map((item, i) => (
+                      {plan.masterLogistics.equipment
+                        .filter(item => item.utensil.toLowerCase().includes(equipSearch.toLowerCase()) || item.useCase.toLowerCase().includes(equipSearch.toLowerCase()))
+                        .sort((a,b) => equipSort?.dir === 'asc' ? a.utensil.localeCompare(b.utensil) : (equipSort?.dir === 'desc' ? b.utensil.localeCompare(a.utensil) : 0))
+                        .map((item, i) => (
                         <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between group hover:border-brand-gold/30 transition-all">
-                          <div>
-                            <div className="text-brand-cream font-bold">{item.utensil}</div>
-                            <div className="text-[10px] text-white/30 italic mt-1">{item.useCase}</div>
+                          <div className="flex flex-col gap-1">
+                            <div className="text-brand-cream font-bold group-hover:text-brand-gold transition-colors">{item.utensil}</div>
+                            <div className="text-[10px] text-white/30 italic flex items-center gap-1">
+                              <Target className="w-2.5 h-2.5 text-brand-gold/40" /> {item.useCase}
+                            </div>
                           </div>
                           <div className="text-2xl font-serif text-brand-gold font-bold">x{item.quantity}</div>
                         </div>
@@ -1001,7 +1525,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                   <div className="space-y-8">
                     <h3 className="text-[10px] uppercase tracking-mega font-bold text-brand-gold">Labor & Infrastructure</h3>
                     <div className="space-y-4">
-                       <div className="p-8 bg-brand-gold text-brand-bg rounded-[2rem] space-y-6">
+                       <div className="p-8 bg-brand-gold text-brand-bg rounded-[2rem] space-y-6 shadow-2xl">
                           <div className="flex justify-between items-center border-b border-brand-bg/20 pb-4">
                             <span className="text-[10px] font-bold uppercase tracking-widest">Cooking Stoves</span>
                             <span className="text-2xl font-serif font-black">{plan.masterLogistics.infrastructure.stovesNeeded}</span>
@@ -1015,35 +1539,64 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                             <span className="text-2xl font-serif font-black">{plan.masterLogistics.infrastructure.servingStaff}</span>
                           </div>
                        </div>
+                       <div className="p-6 border border-white/5 rounded-2xl bg-white/[0.02] italic text-[10px] text-white/30 leading-relaxed">
+                         Note: Infrastructure requirements are calculated based on concurrent course preparation and synchronized service density.
+                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Thaal Cutlery & Service Elements */}
                 <div className="space-y-8">
-                  <div className="flex items-center gap-3">
-                    <Target className="w-5 h-5 text-brand-gold" />
-                    <h3 className="text-[10px] uppercase tracking-mega font-bold text-brand-gold">Thaal Cutlery & Service Elements</h3>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-3">
+                      <Target className="w-5 h-5 text-brand-gold" />
+                      <h3 className="text-[10px] uppercase tracking-mega font-bold text-brand-gold">Thaal Cutlery & Service Elements</h3>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-brand-gold transition-colors" />
+                        <input 
+                          type="text" 
+                          placeholder="Filter cutlery..."
+                          value={cutlerySearch}
+                          onChange={(e) => setCutlerySearch(e.target.value)}
+                          className="bg-white/5 border border-white/10 rounded-full py-2 pl-10 pr-6 text-[11px] text-brand-cream focus:outline-none focus:border-brand-gold/40 transition-all w-full md:w-56"
+                        />
+                      </div>
+                      <button 
+                         onClick={printCutlery}
+                         className="p-2 border border-brand-gold/30 text-brand-gold rounded-full hover:bg-brand-gold hover:text-brand-bg transition-all"
+                         title="Print Cutlery List"
+                       >
+                         <FileText className="w-4 h-4" />
+                       </button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {plan.masterLogistics.thaalCutlery.map((item, i) => (
-                      <div key={i} className="p-8 glass-card border-brand-gold/20 rounded-2xl space-y-4 relative overflow-hidden group">
+                    {plan.masterLogistics.thaalCutlery
+                      .filter(item => item.item.toLowerCase().includes(cutlerySearch.toLowerCase()) || (item.useCase && item.useCase.toLowerCase().includes(cutlerySearch.toLowerCase())))
+                      .map((item, i) => (
+                      <div key={i} className="p-8 glass-card border-brand-gold/20 rounded-2xl space-y-6 relative overflow-hidden group hover:border-brand-gold/40 transition-all">
                         <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                            <Sparkles className="w-12 h-12 text-brand-gold" />
                         </div>
-                        <div className="text-xs uppercase font-black text-brand-gold tracking-widest">{item.item}</div>
-                        <div className="space-y-2">
-                           <div className="flex justify-between text-[10px] text-white/30">
-                              <span>Per Thaal</span>
+                        <div>
+                          <div className="text-xs uppercase font-black text-brand-gold tracking-widest mb-1">{item.item}</div>
+                          <div className="text-[9px] text-white/30 italic uppercase tracking-tighter">{item.useCase}</div>
+                        </div>
+                        <div className="space-y-3">
+                           <div className="flex justify-between text-[10px] text-white/40">
+                              <span className="flex items-center gap-1"><Users className="w-3 h-3" /> Per Thaal</span>
                               <span>x{item.quantityPerThaal}</span>
                            </div>
-                           <div className="flex justify-between text-[10px] text-white/30">
-                              <span>Buffer/Wastage</span>
-                              <span className="text-red-400">+{item.wastageBuffer}</span>
+                           <div className="flex justify-between text-[10px] text-white/40">
+                              <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3 text-red-500/50" /> Wastage Buffer</span>
+                              <span className="text-red-400/80">+{item.wastageBuffer}</span>
                            </div>
-                           <div className="pt-3 border-t border-white/5 flex justify-between items-end">
-                              <span className="text-[10px] uppercase font-bold text-white/50">Total Needed</span>
-                              <span className="text-2xl font-serif text-brand-cream font-bold">{item.totalNeeded}</span>
+                           <div className="pt-4 border-t border-white/10 flex justify-between items-end">
+                              <span className="text-[10px] uppercase font-bold text-white/60">Total Needed</span>
+                              <span className="text-2xl font-serif text-brand-cream font-bold group-hover:text-brand-gold transition-colors">{item.totalNeeded}</span>
                            </div>
                         </div>
                       </div>
@@ -1058,13 +1611,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                    </p>
                 </div>
 
-                <button 
-                  onClick={() => setPlan(null)}
-                  className="w-full py-6 border border-white/10 text-white/30 hover:text-brand-gold hover:border-brand-gold transition-all text-[10px] uppercase font-bold tracking-widest"
-                >
-                  Reset Orchestration
-                </button>
-              </div>
+               </div>
             ) : activeTab === 'audits' ? (
               <div className="max-w-7xl mx-auto py-12 space-y-12">
                  {/* Top Level Strategic Audits */}
@@ -1190,6 +1737,9 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                           </h4>
                           <Trophy className="w-5 h-5 text-brand-gold/30" />
                         </div>
+                        <p className="text-[10px] text-brand-gold/60 uppercase tracking-widest mb-6 font-bold">
+                          Alignment with Heritage Standards
+                        </p>
                         <div className="space-y-6">
                           {plan.qaAudit.scorecard.map((score, i) => (
                             <div key={i} className="space-y-3">
@@ -1262,42 +1812,6 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                             </div>
                             <div className="h-1 bg-white/10 rounded-full overflow-hidden">
                               <motion.div initial={{ width: 0 }} animate={{ width: `${plan.logisticalAudit.chaosFactor}%` }} className="h-full bg-brand-gold" />
-                            </div>
-                         </div>
-                      </div>
-                    )}
-
-                    {plan.masterChefAudit && (
-                      <div className="p-8 border-2 border-red-900 bg-black rounded-3xl relative overflow-hidden shadow-[0_0_50px_rgba(153,27,27,0.1)] col-span-full">
-                         <div className="flex items-center gap-3 mb-8">
-                            <div className="w-10 h-10 rounded-full bg-red-900/20 flex items-center justify-center">
-                               <ChefHat className="w-6 h-6 text-red-500" />
-                            </div>
-                            <div>
-                               <h4 className="text-xs uppercase tracking-mega font-bold text-red-500">Master Chef's Audit</h4>
-                               <p className="text-[9px] text-white/30 uppercase font-bold tracking-widest italic">40-Year Culinary Tenure Assessment</p>
-                            </div>
-                         </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                            <div className="space-y-6">
-                               <div className="space-y-2">
-                                  <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Brutal Take</span>
-                                  <p className="text-sm font-serif italic text-red-100/80 leading-relaxed border-l-2 border-red-900/50 pl-6">"{plan.masterChefAudit.brutalTake}"</p>
-                               </div>
-                               <div className="space-y-2">
-                                  <span className="text-[10px] uppercase font-bold tracking-widest text-red-500">Greatest Weakness</span>
-                                  <p className="text-xs text-white/60 leading-relaxed italic">{plan.masterChefAudit.greatestWeakness}</p>
-                               </div>
-                            </div>
-                            <div className="space-y-6">
-                               <div className="space-y-2">
-                                  <span className="text-[10px] uppercase font-bold tracking-widest text-green-500">Strategic Enhancement</span>
-                                  <p className="text-xs text-white/60 leading-relaxed">{plan.masterChefAudit.strategicEnhancement}</p>
-                               </div>
-                               <div className="space-y-2">
-                                  <span className="text-[10px] uppercase font-bold tracking-widest text-brand-gold">The Contrarian Logic</span>
-                                  <p className="text-xs text-white/60 leading-relaxed font-mono italic">"{plan.masterChefAudit.contrarianTake}"</p>
-                               </div>
                             </div>
                          </div>
                       </div>
@@ -1409,15 +1923,8 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                       </div>
                     )}
                  </div>
-
-                 <button 
-                   onClick={() => setPlan(null)}
-                   className="w-full py-6 border border-white/10 text-white/30 hover:text-brand-gold hover:border-brand-gold transition-all text-[10px] uppercase font-bold tracking-widest"
-                 >
-                   Reset Orchestration
-                 </button>
               </div>
-            ) : activeTab === 'combinations' ? (
+            ) : activeTab === 'combinations' && plan.combinationsAudit ? (
               <div className="max-w-7xl mx-auto py-12 space-y-12">
                  {/* Selection Logic & Sensory Profile */}
                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1428,7 +1935,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                         <h3 className="text-[10px] uppercase tracking-mega font-bold text-brand-gold mb-6">Selection Philosophy</h3>
                         <h2 className="text-4xl font-serif text-brand-cream mb-8 font-medium">Why This <span className="italic text-brand-gold">Specific Symphony</span>?</h2>
                         <p className="text-lg text-white/60 font-light leading-relaxed italic">
-                          "{plan.combinationsAudit.selectionLogic}"
+                          "{plan.combinationsAudit.selectionLogic || 'Calculating selection logic...'}"
                         </p>
                     </div>
                     
@@ -1438,21 +1945,21 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                              <Zap className="w-4 h-4" />
                              <span className="text-[10px] uppercase font-bold tracking-widest">Taste Symphony</span>
                           </div>
-                          <p className="text-xs text-white/50 leading-relaxed italic">"{plan.combinationsAudit.tasteSymphony}"</p>
+                          <p className="text-xs text-white/50 leading-relaxed italic">"{plan.combinationsAudit.tasteSymphony || 'N/A'}"</p>
                        </div>
                        <div className="p-8 glass-card border-brand-gold/20 rounded-3xl space-y-4">
                           <div className="flex items-center gap-2 text-brand-gold">
                              <Target className="w-4 h-4" />
                              <span className="text-[10px] uppercase font-bold tracking-widest">Texture Mapping</span>
                           </div>
-                          <p className="text-xs text-white/50 leading-relaxed italic">"{plan.combinationsAudit.textureMapping}"</p>
+                          <p className="text-xs text-white/50 leading-relaxed italic">"{plan.combinationsAudit.textureMapping || 'N/A'}"</p>
                        </div>
                        <div className="p-8 glass-card border-brand-gold/20 rounded-3xl space-y-4">
                           <div className="flex items-center gap-2 text-brand-gold">
                              <Library className="w-4 h-4" />
                              <span className="text-[10px] uppercase font-bold tracking-widest">Palate Modulation</span>
                           </div>
-                          <p className="text-xs text-white/50 leading-relaxed italic">"{plan.combinationsAudit.palateModulation}"</p>
+                          <p className="text-xs text-white/50 leading-relaxed italic">"{plan.combinationsAudit.palateModulation || 'N/A'}"</p>
                        </div>
                     </div>
                  </div>
@@ -1474,7 +1981,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                      </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                       {plan.combinationsAudit.flavorProgression.map((stage, i) => (
+                       {(plan.combinationsAudit.flavorProgression || []).map((stage, i) => (
                           <div key={i} className="p-10 glass-card border-brand-gold/10 rounded-[2.5rem] relative overflow-hidden group hover:border-brand-gold/30 transition-all">
                              <div className="absolute -top-4 -right-4 text-6xl font-serif text-brand-gold opacity-5 group-hover:opacity-10 transition-opacity">0{i + 1}</div>
                              <div className="relative z-10 space-y-6">
@@ -1513,7 +2020,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                            </div>
                         </div>
                         <p className="text-sm text-white/60 leading-relaxed italic border-l-2 border-brand-gold/30 pl-6">
-                           "{plan.combinationsAudit.efficiencySecrets}"
+                           "{plan.combinationsAudit.efficiencySecrets || 'N/A'}"
                         </p>
                         <div className="p-6 bg-white/[0.02] rounded-2xl border border-white/5">
                            <div className="flex items-center gap-2 mb-2">
@@ -1541,7 +2048,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                            </div>
                         </div>
                         <p className="text-sm text-white/60 leading-relaxed italic border-l-2 border-green-500/30 pl-6">
-                           "{plan.combinationsAudit.costLevers}"
+                           "{plan.combinationsAudit.costLevers || 'N/A'}"
                         </p>
                         <div className="p-6 bg-white/[0.02] rounded-2xl border border-white/5">
                            <div className="flex items-center gap-2 mb-2">
@@ -1576,7 +2083,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                          <h4 className="text-[11px] uppercase tracking-mega font-bold text-white/80">Expert-Sanctioned Substitutions</h4>
                        </div>
                        <div className="space-y-4">
-                         {plan.combinationsAudit.allowedSubstitutions.map((sub, i) => (
+                         {(plan.combinationsAudit.allowedSubstitutions || []).map((sub, i) => (
                            <div key={i} className="p-8 bg-white/[0.02] border border-white/5 rounded-2xl group hover:border-brand-gold/30 transition-all relative overflow-hidden">
                               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                                  <CheckCircle2 className="w-12 h-12 text-brand-gold" />
@@ -1601,7 +2108,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                          <h4 className="text-[11px] uppercase tracking-mega font-bold text-white/80">The Master's Veto: Forbidden</h4>
                        </div>
                        <div className="space-y-4">
-                         {plan.combinationsAudit.forbiddenSubstitutions.map((sub, i) => (
+                         {(plan.combinationsAudit.forbiddenSubstitutions || []).map((sub, i) => (
                            <div key={i} className="p-8 bg-black border border-red-500/30 rounded-2xl group relative overflow-hidden">
                               <div className="absolute top-0 right-0 p-4 opacity-10">
                                  <AlertTriangle className="w-12 h-12 text-red-900" />
@@ -1641,17 +2148,17 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                       </p>
                     </div>
                  </div>
-
-                 <button 
-                   onClick={() => setPlan(null)}
-                   className="w-full py-6 border border-white/10 text-white/30 hover:text-brand-gold hover:border-brand-gold transition-all text-[10px] uppercase font-bold tracking-widest"
-                 >
-                   Reset Orchestration
-                 </button>
               </div>
             ) : activeTab === 'timeline' ? (
               <div className="max-w-7xl mx-auto py-12">
-                <div className="space-y-24">
+                {plan.timeline.length === 0 ? (
+                  <div className="py-32 text-center space-y-6">
+                    <AlertTriangle className="w-12 h-12 text-brand-gold mx-auto opacity-40" />
+                    <p className="text-brand-gold font-serif text-2xl italic">The temporal rhythm is currently unaligned.</p>
+                    <p className="text-white/40 text-sm max-w-md mx-auto">The orchestrator failed to generate a synchronized timeline. Please reset and try again for a deeper alignment.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-24">
                   {/* Parallel Track Headers */}
                   <div className={`grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 sticky top-0 bg-brand-bg z-10 py-6 border-b border-white/5 transition-colors ${kitchenMode ? 'bg-black border-red-500/20' : ''}`}>
                     {['Active Cooking', 'Host Rituals', 'Prep/Plating'].map(track => (
@@ -1666,17 +2173,18 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                   {(() => {
                     const grouped = plan.timeline.reduce((acc: any[], step) => {
                       const last = acc[acc.length - 1];
-                      if (last && last.time === step.timeRelative) {
+                      const time = (step.timeRelative && step.timeRelative.trim()) || 'T-Sync';
+                      if (last && last.time === time) {
                         last.steps.push(step);
                       } else {
-                        acc.push({ time: step.timeRelative, steps: [step] });
+                        acc.push({ time: time, steps: [step] });
                       }
                       return acc;
                     }, []);
 
                     return grouped.map((timeGroup, i) => {
-                      const hasHostRitual = timeGroup.steps.some((s: any) => s.track === 'Host Rituals');
-                      const hasChefAction = timeGroup.steps.some((s: any) => s.track === 'Active Cooking' || s.track === 'Prep/Plating');
+                      const hasHostRitual = timeGroup.steps.some((s: any) => s.track?.toLowerCase() === 'host rituals');
+                      const hasChefAction = timeGroup.steps.some((s: any) => s.track?.toLowerCase() === 'active cooking' || s.track?.toLowerCase() === 'prep/plating');
                       const isSynced = hasHostRitual && hasChefAction;
                       const isolationRisk = !isSynced && timeGroup.steps.length > 0;
 
@@ -1691,8 +2199,11 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
 
                           <div className="py-16">
                             <div className="flex items-center gap-6 mb-12">
-                              <div className={`text-3xl font-mono font-black tracking-tighter ${kitchenMode ? 'text-red-500' : 'text-brand-gold'}`}>
-                                {timeGroup.time}
+                              <div className="flex flex-col">
+                                <span className={`text-[8px] uppercase font-bold tracking-widest mb-1 ${kitchenMode ? 'text-red-500/50' : 'text-brand-gold/50'}`}>Synchronized Timing</span>
+                                <div className={`text-3xl font-mono font-black tracking-tighter ${kitchenMode ? 'text-red-500' : 'text-brand-gold'}`}>
+                                  {timeGroup.time || 'T-Sync'}
+                                </div>
                               </div>
                               {isSynced && (
                                 <div className="flex items-center gap-2 px-3 py-1 bg-brand-gold/10 border border-brand-gold/30 rounded-full">
@@ -1710,7 +2221,7 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                             
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
                               {['Active Cooking', 'Host Rituals', 'Prep/Plating'].map(trackName => {
-                                const step = timeGroup.steps.find((s: any) => s.track === trackName);
+                                const step = timeGroup.steps.find((s: any) => s.track?.toLowerCase() === trackName.toLowerCase());
                                 return (
                                   <div key={trackName} className={`relative min-h-[140px] flex flex-col ${!step ? 'opacity-10 hidden md:block' : ''}`}>
                                     {step && (
@@ -1797,8 +2308,9 @@ export function ThaalPlanner({ onClose, onStartKitchenMode }: ThaalPlannerProps)
                     });
                   })()}
                 </div>
-              </div>
-            ) : null}
+              )}
+            </div>
+          ) : null}
           </div>
         )}
       </div>

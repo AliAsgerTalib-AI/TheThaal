@@ -1,130 +1,98 @@
+import React from 'react';
 import { motion } from 'motion/react';
-import { X, Heart, Users, ShieldCheck, Star, Anchor } from 'lucide-react';
-
-interface TraditionPillar {
-  title: string;
-  description: string;
-  icon: any;
-}
-
-const PILLARS: TraditionPillar[] = [
-  {
-    title: "The Safra & Thaal",
-    description: "Eating together on a Safra (cloth) around a circular Thaal (metal plate) symbolizes equality, unity, and the shared blessing of sustenance.",
-    icon: Users
-  },
-  {
-    title: "Purity & Hygiene",
-    description: "The ritual of washing hands (Chelam-chi Lota) and the insistence on 'Halal' and 'Tayyib' (Pure) ingredients are non-negotiable foundations.",
-    icon: ShieldCheck
-  },
-  {
-    title: "Zero Waste (Zulm)",
-    description: "Wasting food is considered a sin. Every morsel in the Thaal must be consumed, teaching respect for the labor and divine gift of food.",
-    icon: Heart
-  }
-];
+import { Scroll, Users, Sparkles, Utensils, Hash, Star } from 'lucide-react';
 
 interface TraditionPageProps {
   onClose: () => void;
 }
 
 export function TraditionPage({ onClose }: TraditionPageProps) {
+  const principles = [
+    {
+      icon: <Users className="w-6 h-6" />,
+      title: 'Communal Thaal',
+      desc: 'The meal is served in a large circular tray (Thaal) where eight people eat together, fostering unity and equality.'
+    },
+    {
+      icon: <Hash className="w-6 h-6" />,
+      title: 'Salt Ritual',
+      desc: 'Beginning and ending the meal with a pinch of salt is a Sunnah, believed to cleanse the palate and aid digestion.'
+    },
+    {
+      icon: <Utensils className="w-6 h-6" />,
+      title: 'No Wastage',
+      desc: 'Respect for sustenance is paramount. Not a single grain of rice is left on the Thaal, as food is considered a divine blessing.'
+    },
+    {
+      icon: <Star className="w-6 h-6" />,
+      title: 'Sequence of Courses',
+      desc: 'The meal traditionally alternates between sweet (Meethas) and savory (Kharaas) courses to balance the palate.'
+    }
+  ];
+
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="min-h-screen bg-brand-bg relative"
-    >
-      <div className="fixed inset-0 bg-[#0a0a0a]" />
-      <div className="fixed inset-white/5 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #d4af37 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-      
-      <div className="relative max-w-7xl mx-auto px-6 md:px-12 pt-32 pb-24">
-        <section className="text-center mb-32 space-y-8">
+    <div className="pt-32 pb-24 px-6 md:px-12 max-w-7xl mx-auto min-h-screen">
+      <header className="mb-24 text-center">
+        <motion.div
+           initial={{ opacity: 0, scale: 0.9 }}
+           animate={{ opacity: 1, scale: 1 }}
+           className="inline-flex items-center gap-2 px-4 py-2 border border-brand-gold/30 text-brand-gold text-[10px] tracking-[0.3em] font-bold uppercase mb-8"
+        >
+          <Sparkles className="w-3.5 h-3.5" /> Adab of the Thaal
+        </motion.div>
+        <h1 className="font-serif text-6xl md:text-8xl text-brand-cream leading-tight mb-8">
+          A Symphony of <br /><span className="text-brand-gold italic font-light">Etiquette</span>
+        </h1>
+        <p className="max-w-2xl mx-auto text-brand-cream/60 leading-relaxed font-sans text-lg">
+          Bohra dining is not just about the food; it is a spiritual orchestration of rituals that protect the dignity of the meal and the community.
+        </p>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-32">
+        {principles.map((p, i) => (
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
+            key={p.title}
+            initial={{ opacity: 0, x: i % 2 === 0 ? -20 : 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="flex gap-8 p-10 border border-white/5 bg-[#1A1816]/30 hover:bg-[#1A1816]/50 transition-all hover:border-brand-gold/20"
           >
-             <span className="text-brand-gold uppercase tracking-[0.4em] font-black text-[10px]">Al-Barakat</span>
-             <h1 className="text-6xl md:text-9xl font-serif text-brand-cream leading-tight">
-               The <span className="italic">Heritage</span> <br />of the <span className="text-brand-gold">Thaal</span>
-             </h1>
+            <div className="flex-shrink-0 w-14 h-14 rounded-full border border-brand-gold/20 flex items-center justify-center text-brand-gold bg-brand-gold/5">
+              {p.icon}
+            </div>
+            <div>
+              <h3 className="font-serif text-2xl text-brand-cream mb-4">{p.title}</h3>
+              <p className="text-brand-cream/50 leading-relaxed font-sans text-sm">{p.desc}</p>
+            </div>
           </motion.div>
-          
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-xl md:text-2xl text-white/40 font-light max-w-3xl mx-auto leading-relaxed italic"
-          >
-            "A plate that binds a community, a sequence that balances the soul, and a ritual that honors the creator."
-          </motion.p>
-        </section>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-40">
-          {PILLARS.map((pillar, i) => (
-            <motion.div
-              key={pillar.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.2 }}
-              className="p-12 glass-card border-brand-gold/10 rounded-[3rem] hover:border-brand-gold/40 transition-all duration-700"
-            >
-              <pillar.icon className="w-12 h-12 text-brand-gold mb-8" />
-              <h3 className="text-2xl font-serif text-brand-cream mb-6">{pillar.title}</h3>
-              <p className="text-white/50 leading-relaxed font-light">{pillar.description}</p>
-            </motion.div>
-          ))}
-        </div>
-
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center mb-40">
-           <div className="space-y-8">
-             <div className="flex items-center gap-4">
-               <Anchor className="w-6 h-6 text-brand-gold" />
-               <span className="text-xs uppercase tracking-widest font-bold text-brand-gold">Global Diaspora</span>
-             </div>
-             <h2 className="text-4xl md:text-6xl font-serif text-brand-cream leading-tight">
-               From Yemen to Zanzibar to the World
-             </h2>
-             <p className="text-lg text-white/60 leading-relaxed font-light">
-               The Bohra community's culinary journey is a map of global trade. From the spice markets of East Africa 
-                to the coastal towns of Gujarat, every migration added a layer to our palette. Yet, the core remains 
-                anchored in the Fatimi traditions of Yemen and Egypt.
-             </p>
-             <div className="pt-8 grid grid-cols-2 gap-12 border-t border-white/5">
-                <div className="space-y-2">
-                  <span className="text-3xl font-mono font-bold text-brand-gold">1000+</span>
-                  <p className="text-[10px] uppercase font-bold tracking-mega text-white/30">Years of History</p>
-                </div>
-                <div className="space-y-2">
-                  <span className="text-3xl font-mono font-bold text-brand-gold">Global</span>
-                  <p className="text-[10px] uppercase font-bold tracking-mega text-white/30">Diaspora Presence</p>
-                </div>
-             </div>
-           </div>
-           
-           <div className="relative">
-             <div className="aspect-[4/5] rounded-[4rem] bg-gradient-to-br from-brand-gold/20 to-transparent border border-brand-gold/30 flex items-center justify-center p-12 text-center">
-                <div className="space-y-8">
-                  <Star className="w-16 h-16 text-brand-gold mx-auto opacity-40 animate-pulse" />
-                  <p className="text-2xl font-serif italic text-brand-cream leading-relaxed">
-                    "The Thaal is a circle. In a circle, there is no head, no tail, No king, no commoner. 
-                    Only brothers and sisters breaking bread."
-                  </p>
-                </div>
-             </div>
-           </div>
-        </section>
-
-        <footer className="text-center py-20 border-t border-white/5">
-          <p className="text-[10px] uppercase tracking-mega font-bold text-white/20">
-            Heritage Preserved &bull; Future Orchestrated
-          </p>
-        </footer>
+        ))}
       </div>
-    </motion.div>
+
+      <section className="relative py-24 border-y border-white/5 overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.02]">
+          <Scroll className="w-full h-full rotate-[-15deg] scale-125" />
+        </div>
+        
+        <div className="flex flex-col md:flex-row items-center gap-16 relative z-10">
+          <div className="md:w-1/2">
+            <h2 className="font-serif text-4xl md:text-5xl text-brand-gold leading-tight mb-8">The Philosophy of Selection</h2>
+            <p className="text-brand-cream/70 leading-relaxed font-sans mb-6">
+              A balanced Thaal is a masterpiece of nutritional and sensory engineering. The transition from one course to another is timed to allow the body to process information effectively.
+            </p>
+            <p className="text-brand-cream/70 leading-relaxed font-sans">
+              "When we eat together, we share more than food. We share time, space, and a common destiny. The Thaal is where the family is built."
+            </p>
+          </div>
+          <div className="md:w-1/2 grid grid-cols-2 gap-4">
+            <div className="aspect-[4/5] overflow-hidden border border-white/10 group">
+              <img src="https://images.unsplash.com/photo-1594179047519-f347310d3322?q=80&w=2670&auto=format&fit=crop" className="w-full h-full object-cover grayscale transition-all group-hover:grayscale-0 duration-700" alt="Tradition" />
+            </div>
+            <div className="aspect-[4/5] overflow-hidden border border-white/10 mt-12 group">
+              <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2670&auto=format&fit=crop" className="w-full h-full object-cover grayscale transition-all group-hover:grayscale-0 duration-700" alt="Thaal" />
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

@@ -7,7 +7,7 @@ export interface Recipe {
   time: string;
   servings: string;
   servingCount: number;
-  flavorProfile: 'Khatta-Mitth' | 'Zaikedaar' | 'Kurkura' | 'Masaledaar' | 'Malai' | 'Dhungaar' | 'Kharas';
+  flavorProfile: 'Khatta-Mitth' | 'Zaikedaar' | 'Kurkura' | 'Masaledaar' | 'Malai' | 'Dhungaar' | 'Kharaas';
   cuisineType: 'Traditional' | 'Fusion';
   difficulty: 'Easy' | 'Medium' | 'Advanced';
   ingredients: string[];
@@ -20,6 +20,8 @@ export interface Recipe {
 export interface ThaalPlan {
   id: string;
   title: string;
+  location?: string;
+  month?: string;
   guestCount: number;
   dishes: {
     sequence: number;
@@ -115,7 +117,7 @@ export interface ThaalPlan {
     name: string;
     type: 'Pickle' | 'Chutney' | 'Raita' | 'Murabba';
     description: string;
-    pairingLogic: string;
+    palateOrchestration: string;
   }[];
   complementarySuggestions: {
     dishType: string;
@@ -160,6 +162,7 @@ export interface ThaalPlan {
   masterLogistics: {
     ingredients: {
       item: string;
+      category?: string;
       baseQuantity: string;
       scaledQuantity: string;
       emergencyBuffer: string;
@@ -182,6 +185,7 @@ export interface ThaalPlan {
       quantityPerThaal: number;
       totalNeeded: number;
       wastageBuffer: number;
+      useCase: string;
     }[];
   };
 }
