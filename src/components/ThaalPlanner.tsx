@@ -805,6 +805,49 @@ export function ThaalPlanner({
       const parsedPlan = JSON.parse(jsonStr);
       parsedPlan.location = location;
       parsedPlan.month = month;
+
+      // 2.5: Enforce cultural sequence — Meethas → Kharaas → Jamaan → Salad/Side
+      if (Array.isArray(parsedPlan.dishes)) {
+        parsedPlan.dishes.sort((a: any, b: any) => a.sequence - b.sequence);
+        const firstType = parsedPlan.dishes[0]?.type;
+        const saladBeforeJamaan = parsedPlan.dishes.some((d: any, i: number) =>
+          d.type === 'Salad/Side' && parsedPlan.dishes.slice(i + 1).some((d2: any) => d2.type === 'Jamaan')
+        );
+        if (firstType !== 'Meethas' || saladBeforeJamaan) {
+          console.warn('[Thaal] Cultural sequence violation detected — re-ordering dishes.');
+          const PRIORITY: Record<string, number> = { 'Meethas': 0, 'Kharaas': 1, 'Jamaan': 2, 'Salad/Side': 3 };
+          parsedPlan.dishes.sort((a: any, b: any) => {
+            const pa = PRIORITY[a.type] ?? 99;
+            const pb = PRIORITY[b.type] ?? 99;
+            return pa !== pb ? pa - pb : a.sequence - b.sequence;
+          });
+          parsedPlan.dishes.forEach((dish: any, i: number) => { dish.sequence = i + 1; });
+        }
+      }
+
+      // 2.6: Cross-check forbidden substitutions against dish ingredients
+      const forbidden = parsedPlan.combinationsAudit?.forbiddenSubstitutions ?? [];
+      if (forbidden.length > 0 && Array.isArray(parsedPlan.dishes)) {
+        const violations: string[] = [];
+        for (const rule of forbidden) {
+          const match = parsedPlan.dishes.find((d: any) =>
+            d.recipe?.title?.toLowerCase().includes(rule.dish?.toLowerCase() ?? '')
+          );
+          if (match) {
+            const hasViolation = match.recipe.ingredients?.some((ing: string) =>
+              ing.toLowerCase().includes(rule.forbidden?.toLowerCase() ?? '')
+            );
+            if (hasViolation) {
+              violations.push(`${match.recipe.title}: forbidden ingredient "${rule.forbidden}"`);
+            }
+          }
+        }
+        if (violations.length > 0) {
+          console.warn('[Thaal] Forbidden substitution violations:', violations);
+          parsedPlan.masterCritique = `⚠️ Tradition Alert: ${violations.join('; ')}\n\n` + (parsedPlan.masterCritique ?? '');
+        }
+      }
+
       setPlan(parsedPlan);
       setCompletedSteps([]);
       setCurrentStep(0);
@@ -1859,6 +1902,37 @@ export function ThaalPlanner({
                               </div>
                            </div>
                            <p className="text-xs text-white/60">{plan.engineeringAudit.scaleAdjustments}</p>
+                         </div>
+                      </div>
+                    )}
+
+                    {plan.releaseAudit && (
+                      <div className="p-8 bg-blue-950/40 border border-blue-500/20 rounded-2xl relative overflow-hidden shadow-2xl">
+                         <div className="flex items-center justify-between mb-8">
+                           <h4 className="text-[11px] uppercase tracking-mega font-bold text-blue-400 flex items-center gap-2">
+                             <Rocket className="w-4 h-4" /> Release Readiness
+                           </h4>
+                           <span className={`text-[9px] font-bold px-2 py-1 rounded ${
+                             plan.releaseAudit.ritualLatency === 'Low' ? 'bg-green-500 text-black' :
+                             plan.releaseAudit.ritualLatency === 'Moderate' ? 'bg-brand-gold text-brand-bg' :
+                             'bg-red-500 text-white'
+                           }`}>
+                             Ritual Latency: {plan.releaseAudit.ritualLatency}
+                           </span>
+                         </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-2">
+                             <span className="text-[9px] uppercase font-bold tracking-widest text-blue-400/60">Deployment Readiness</span>
+                             <p className="text-xs text-white/70 leading-relaxed">{plan.releaseAudit.deploymentReadiness}</p>
+                           </div>
+                           <div className="space-y-2">
+                             <span className="text-[9px] uppercase font-bold tracking-widest text-blue-400/60">Failover Protocol</span>
+                             <p className="text-xs text-white/70 leading-relaxed">{plan.releaseAudit.failoverProtocol}</p>
+                           </div>
+                           <div className="space-y-2 md:col-span-2">
+                             <span className="text-[9px] uppercase font-bold tracking-widest text-blue-400/60">Scaling Physics</span>
+                             <p className="text-xs text-white/70 leading-relaxed">{plan.releaseAudit.scalingPhysics}</p>
+                           </div>
                          </div>
                       </div>
                     )}

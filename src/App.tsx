@@ -44,11 +44,19 @@ export default function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem('archivedRecipes', JSON.stringify(archivedRecipes));
+    try {
+      localStorage.setItem('archivedRecipes', JSON.stringify(archivedRecipes));
+    } catch {
+      console.warn('localStorage quota exceeded — archived recipes not persisted.');
+    }
   }, [archivedRecipes]);
 
   useEffect(() => {
-    localStorage.setItem('archivedPlans', JSON.stringify(archivedPlans));
+    try {
+      localStorage.setItem('archivedPlans', JSON.stringify(archivedPlans));
+    } catch {
+      console.warn('localStorage quota exceeded — archived plans not persisted.');
+    }
   }, [archivedPlans]);
 
   const [recipeInKitchen, setRecipeInKitchen] = useState<Recipe | null>(null);
