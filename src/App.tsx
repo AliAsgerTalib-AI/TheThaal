@@ -27,12 +27,20 @@ export default function App() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [userRecipes, setUserRecipes] = useState<Recipe[]>([]);
   const [archivedRecipes, setArchivedRecipes] = useState<Recipe[]>(() => {
-    const saved = localStorage.getItem('archivedRecipes');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('archivedRecipes');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
   const [archivedPlans, setArchivedPlans] = useState<ThaalPlan[]>(() => {
-    const saved = localStorage.getItem('archivedPlans');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('archivedPlans');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {
@@ -74,10 +82,8 @@ export default function App() {
 
   const handleArchivePlan = (plan: ThaalPlan) => {
     setArchivedPlans(prev => {
-      // Create a copy with a unique ID if it doesn't have one for archiving
-      const planToArchive = { ...plan, id: plan.id || `plan-${Date.now()}` };
-      if (prev.some(p => p.id === planToArchive.id)) return prev;
-      return [planToArchive, ...prev];
+      if (prev.some(p => p.id === plan.id)) return prev;
+      return [plan, ...prev];
     });
   };
 

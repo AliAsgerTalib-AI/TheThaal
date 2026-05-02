@@ -11,7 +11,6 @@ import { CATEGORIES } from '../constants';
 import { GoogleGenAI } from "@google/genai";
 
 interface RecipesPageProps {
-  onRecipeClick?: (recipe: Recipe) => void;
   userRecipes: Recipe[];
   onAddUserRecipe: (recipe: Recipe) => void;
   onArchiveRecipe: (recipe: Recipe) => void;
@@ -139,7 +138,7 @@ export function RecipesPage({
               onStartKitchenMode(r);
               setGeneratedRecipe(null);
             }}
-            isSaved={userRecipes.some(r => r.title === generatedRecipe.title)}
+            isSaved={userRecipes.some(r => r.id === generatedRecipe.id || r.title === generatedRecipe.title)}
           />
         )}
       </AnimatePresence>
