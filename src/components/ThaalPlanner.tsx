@@ -83,7 +83,7 @@ export function ThaalPlanner({
 
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-pro-preview-05-06",
+        model: "gemini-3.1-pro-preview",
         contents: [{ role: "user", parts: [{ text: prompt }] }]
       });
       setChallengeResponse(response.text || "The Master nods in silent agreement.");
@@ -452,7 +452,7 @@ export function ThaalPlanner({
       console.log(`Requesting orchestration for ${thaalCount} Thaals (${totalGuests} guests)...`);
       
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-pro-preview-05-06",
+        model: "gemini-3.1-pro-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
