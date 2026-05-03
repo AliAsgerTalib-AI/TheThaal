@@ -43,6 +43,25 @@ export default function App() {
     }
   });
 
+  // Restore a shared plan from URL hash on first load
+  useEffect(() => {
+    const hash = window.location.hash;
+    const match = hash.match(/^#plan=(.+)$/);
+    if (!match) return;
+    try {
+      const decoded = JSON.parse(decodeURIComponent(atob(match[1])));
+      if (decoded && decoded.id && decoded.dishes) {
+        setThaalPlan(decoded);
+        setThaalCount(Math.round((decoded.guestCount || 8) / 8));
+        setIsThaalPlannerOpen(true);
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    } catch {
+      // malformed hash — ignore silently
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem('archivedRecipes', JSON.stringify(archivedRecipes));

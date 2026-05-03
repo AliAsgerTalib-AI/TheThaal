@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Users, Clock, ChefHat, Sparkles, Wand2, ArrowRight, Play, CheckCircle2, ChevronDown, ChevronUp, BookOpen, Settings, ShieldAlert, Activity, Trophy, AlertTriangle, Lock, Eye, EyeOff, Rocket, Zap, FileText, Library, Globe, Target, TrendingUp, ShieldCheck, Search, ArrowUpDown, ChevronLeft, ChevronRight, Check, RotateCcw } from 'lucide-react';
+import { X, Users, Clock, ChefHat, Sparkles, Wand2, ArrowRight, Play, CheckCircle2, ChevronDown, ChevronUp, BookOpen, Settings, ShieldAlert, Activity, Trophy, AlertTriangle, Lock, Eye, EyeOff, Rocket, Zap, FileText, Library, Globe, Target, TrendingUp, ShieldCheck, Search, ArrowUpDown, ChevronLeft, ChevronRight, Check, RotateCcw, Share2, Loader2, BarChart2 } from 'lucide-react';
 import { ThaalPlan, Recipe } from '../types';
 import { GoogleGenAI, Type } from '@google/genai';
 
@@ -61,6 +61,10 @@ export function ThaalPlanner({
   const [isChallenging, setIsChallenging] = useState<number | null>(null);
   const [challengeResponse, setChallengeResponse] = useState<string | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [occasion, setOccasion] = useState('');
+  const [menuBalance, setMenuBalance] = useState<string | null>(null);
+  const [isBalancing, setIsBalancing] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string }), []);
 
@@ -71,6 +75,41 @@ export function ThaalPlanner({
   const [ingSort, setIngSort] = useState<{ field: string, dir: 'asc' | 'desc' } | null>(null);
   const [equipSort, setEquipSort] = useState<{ field: string, dir: 'asc' | 'desc' } | null>(null);
   const [cutlerySort, setCutlerySort] = useState<{ field: string, dir: 'asc' | 'desc' } | null>(null);
+
+  const analyzeMenuBalance = async () => {
+    if (!plan) return;
+    setIsBalancing(true);
+    setMenuBalance(null);
+    const courseList = plan.dishes
+      .map(d => `Course ${d.sequence} (${d.type}): ${d.recipe.title} [${d.recipe.flavorProfile}]`)
+      .join('\n');
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-pro-preview",
+        contents: [{ role: "user", parts: [{ text: `As a Bohra culinary master, analyze this Thaal menu for balance:\n${courseList}\n\nEvaluate flavor progression, texture contrast, temperature variation, and cultural integrity. Suggest up to 2 specific swaps if needed. Max 120 words.` }] }]
+      });
+      setMenuBalance(response.text || "The Master sees no imbalance — the symphony is perfect.");
+    } catch {
+      setMenuBalance("The Master's wisdom is unavailable. Try again.");
+    } finally {
+      setIsBalancing(false);
+    }
+  };
+
+  const sharePlan = () => {
+    if (!plan) return;
+    try {
+      const encoded = btoa(encodeURIComponent(JSON.stringify(plan)));
+      window.location.hash = `plan=${encoded}`;
+      const url = window.location.href;
+      navigator.clipboard.writeText(url).then(() => {
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2500);
+      });
+    } catch {
+      alert('Unable to generate share link.');
+    }
+  };
 
   const challengeTheMaster = async (dishIndex: number) => {
     if (!plan) return;
@@ -104,41 +143,48 @@ export function ThaalPlanner({
         <head>
           <title>${escapeHtml(title)}</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:wght@700&display=swap');
-            body { 
-              font-family: 'Inter', sans-serif; 
-              padding: 40px; 
-              color: #1a1a1a; 
-              line-height: 1.6;
+            @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;600;700&display=swap');
+            * { box-sizing: border-box; }
+            body {
+              font-family: 'Inter', sans-serif;
+              background: #F5F0E8;
+              color: #2C1810;
+              padding: 48px;
               max-width: 1000px;
               margin: 0 auto;
+              line-height: 1.65;
             }
-            h1 { 
-              color: #8B4513; 
-              font-family: 'Playfair Display', serif; 
-              border-bottom: 4px solid #DAA520; 
-              padding-bottom: 10px;
-              margin-bottom: 30px;
+            h1 {
+              font-family: 'Cormorant Garamond', serif;
+              color: #2C1810;
+              font-size: 38px;
+              font-weight: 600;
+              border-bottom: 3px solid #DAA520;
+              padding-bottom: 16px;
+              margin-bottom: 28px;
               text-align: center;
             }
-            h2 { 
-              color: #DAA520; 
-              margin-top: 40px; 
-              border-bottom: 2px solid #eee; 
-              font-family: 'Playfair Display', serif;
-              padding-bottom: 5px;
+            h2 {
+              font-family: 'Cormorant Garamond', serif;
+              color: #8B4513;
+              font-size: 22px;
+              margin-top: 40px;
+              border-left: 4px solid #DAA520;
+              padding-left: 14px;
+              padding-bottom: 4px;
             }
-            h3 { color: #555; margin-top: 25px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-            th, td { border: 1px solid #eee; padding: 12px; text-align: left; }
-            th { background-color: #fcfcfc; font-weight: bold; color: #8B4513; text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.1em; }
-            .footer { margin-top: 60px; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 20px; text-align: center; font-style: italic; }
-            .recipe-block { page-break-inside: avoid; margin-bottom: 40px; border: 1px solid #eee; padding: 25px; border-radius: 8px; }
-            .tag { display: inline-block; padding: 2px 8px; background: #DAA520; color: white; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 10px; }
-            @media print { 
-              .footer { position: fixed; bottom: 20px; width: 100%; } 
-              body { padding: 20px; }
-              .recipe-block { border: 1px solid #ccc; }
+            h3 { font-family: 'Cormorant Garamond', serif; color: #5C3010; margin-top: 24px; font-size: 17px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+            th, td { border: 1px solid #DAA52033; padding: 10px 14px; text-align: left; }
+            th { background: #EDE5D4; font-weight: 700; color: #8B4513; text-transform: uppercase; font-size: 9px; letter-spacing: 0.15em; }
+            td { font-size: 13px; color: #3D2010; }
+            .footer { margin-top: 60px; font-size: 9px; color: #A08040; border-top: 1px solid #DAA52040; padding-top: 16px; text-align: center; letter-spacing: 0.1em; text-transform: uppercase; }
+            .recipe-block { page-break-inside: avoid; margin-bottom: 40px; border: 1px solid #DAA52033; padding: 24px; border-radius: 4px; background: #FAF6EE; }
+            .tag { display: inline-block; padding: 3px 10px; background: #DAA520; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 12px; }
+            @media print {
+              body { background: #F5F0E8; padding: 24px; }
+              .footer { position: fixed; bottom: 16px; width: 100%; }
+              .recipe-block { border-color: #DAA52044; }
             }
           </style>
         </head>
@@ -420,11 +466,12 @@ export function ThaalPlanner({
       const totalGuests = thaalCount * 8;
       
       const prompt = `Act as a master Dawoodi Bohra Thaal Orchestrator with 40 years of experience serving the high nobility.
-      Create a complete, uncompromising Thaal Plan for ${thaalCount} Thaals (Total Guests: ${totalGuests}). 
-      
+      Create a complete, uncompromising Thaal Plan for ${thaalCount} Thaals (Total Guests: ${totalGuests}).
+
       EVENT CONTEXT:
       - LOCATION: ${location || 'Global (Traditional)'}
       - MONTH/SEASON: ${month}
+      - OCCASION: ${occasion || 'General Dawat'}
       
       A Thaal must strictly follow the traditional sequence: 
       1. First Meethas (Sweet) - Must be rich and welcoming.
@@ -999,12 +1046,19 @@ export function ThaalPlanner({
             <div className="flex items-center gap-4">
               {plan && (
                 <>
-                  <button 
+                  <button
                     onClick={() => onSavePlan(plan)}
                     disabled={isArchived}
                     className={`px-6 py-6 rounded-full border border-brand-gold/30 text-brand-gold text-[10px] uppercase font-bold tracking-widest hover:bg-brand-gold/10 transition-all flex items-center gap-2 ${isArchived ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Library className="w-4 h-4" /> {isArchived ? 'Plan Archived' : 'Save Thaal'}
+                  </button>
+                  <button
+                    onClick={sharePlan}
+                    className="px-6 py-6 rounded-full border border-brand-gold/30 text-brand-gold text-[10px] uppercase font-bold tracking-widest hover:bg-brand-gold/10 transition-all flex items-center gap-2"
+                    title="Copy shareable link to clipboard"
+                  >
+                    <Share2 className="w-4 h-4" /> {shareCopied ? 'Link Copied!' : 'Share Plan'}
                   </button>
                   <button
                     onClick={() => setIsResetConfirmOpen(true)}
@@ -1078,6 +1132,26 @@ export function ThaalPlanner({
               </div>
             </div>
 
+            {/* Occasion selector */}
+            <div className="space-y-4 col-span-full">
+              <label className="text-[10px] uppercase font-bold tracking-widest text-brand-gold block text-left">Occasion Type</label>
+              <div className="flex flex-wrap gap-3">
+                {['Eid Milad', 'Walima', 'Muharram', 'Mehfil', 'Casual Daawat'].map(occ => (
+                  <button
+                    key={occ}
+                    onClick={() => setOccasion(occasion === occ ? '' : occ)}
+                    className={`px-5 py-2 text-[10px] uppercase font-bold tracking-widest transition-all rounded-sm border ${
+                      occasion === occ
+                        ? 'bg-brand-gold text-brand-bg border-brand-gold'
+                        : 'border-white/10 text-white/40 hover:border-brand-gold/50 hover:text-brand-gold'
+                    }`}
+                  >
+                    {occ}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="space-y-6">
               <label className="text-[10px] uppercase font-bold tracking-widest text-brand-gold block">Number of Thaals (8 Guests Each)</label>
               <div className="flex items-center justify-center gap-8">
@@ -1146,7 +1220,15 @@ export function ThaalPlanner({
               </div>
               
             <div className="flex gap-4">
-                <button 
+                <button
+                  onClick={analyzeMenuBalance}
+                  disabled={isBalancing}
+                  className="px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all bg-brand-gold/10 text-brand-gold border border-brand-gold/30 hover:bg-brand-gold hover:text-brand-bg flex items-center gap-2"
+                >
+                  {isBalancing ? <Loader2 className="w-4 h-4 animate-spin" /> : <BarChart2 className="w-4 h-4" />}
+                  Balance Check
+                </button>
+                <button
                   onClick={printAllRecipes}
                   className="px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all bg-white/5 text-white/60 hover:bg-white hover:text-brand-bg flex items-center gap-2"
                 >
@@ -1172,6 +1254,25 @@ export function ThaalPlanner({
 
             {activeTab === 'overview' ? (
               <div className="max-w-7xl mx-auto py-12 space-y-12">
+                <AnimatePresence>
+                  {menuBalance && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="p-6 bg-brand-gold/5 border border-brand-gold/30 rounded-xl flex gap-4 items-start"
+                    >
+                      <BarChart2 className="w-5 h-5 text-brand-gold mt-0.5 shrink-0" />
+                      <div>
+                        <div className="text-[9px] uppercase font-black text-brand-gold tracking-widest mb-2">Master's Balance Assessment</div>
+                        <p className="text-sm text-brand-cream/80 leading-relaxed italic">{menuBalance}</p>
+                      </div>
+                      <button onClick={() => setMenuBalance(null)} className="text-white/20 hover:text-white/60 transition-colors ml-auto shrink-0">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {plan?.dishes?.map((dish, i) => (
                     <div key={i} className={`glass-card overflow-hidden group transition-all duration-500 ${expandedDishIndex === i ? 'ring-2 ring-brand-gold/40 col-span-full' : 'hover:border-brand-gold/40'}`}>

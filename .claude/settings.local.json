@@ -15,7 +15,9 @@
       "PowerShell(New-Item *)",
       "Bash(New-Item *)",
       "Bash(claude mcp *)",
-      "PowerShell(\\(Get-Content \"C:\\\\Users\\\\alias\\\\OneDrive\\\\AI Projects\\\\TheThaal\\\\src\\\\components\\\\ThaalPlanner.tsx\" | Measure-Object -Line\\).Lines)"
+      "PowerShell(\\(Get-Content \"C:\\\\Users\\\\alias\\\\OneDrive\\\\AI Projects\\\\TheThaal\\\\src\\\\components\\\\ThaalPlanner.tsx\" | Measure-Object -Line\\).Lines)",
+      "Bash(npx playwright *)",
+      "Bash(npm install *)"
     ]
   }
 }
