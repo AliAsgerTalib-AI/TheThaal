@@ -99,7 +99,9 @@ export function ThaalPlanner({
   const sharePlan = () => {
     if (!plan) return;
     try {
-      const encoded = btoa(encodeURIComponent(JSON.stringify(plan)));
+      // URL-safe base64: avoids + and / which can be mishandled in some URL contexts
+      const encoded = btoa(encodeURIComponent(JSON.stringify(plan)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
       window.location.hash = `plan=${encoded}`;
       const url = window.location.href;
       navigator.clipboard.writeText(url).then(() => {
@@ -853,23 +855,15 @@ export function ThaalPlanner({
       parsedPlan.location = location;
       parsedPlan.month = month;
 
-      // 2.5: Enforce cultural sequence — Meethas → Kharaas → Jamaan → Salad/Side
+      // 2.5: Always enforce cultural sequence — Meethas → Kharaas → Jamaan → Salad/Side
       if (Array.isArray(parsedPlan.dishes)) {
-        parsedPlan.dishes.sort((a: any, b: any) => a.sequence - b.sequence);
-        const firstType = parsedPlan.dishes[0]?.type;
-        const saladBeforeJamaan = parsedPlan.dishes.some((d: any, i: number) =>
-          d.type === 'Salad/Side' && parsedPlan.dishes.slice(i + 1).some((d2: any) => d2.type === 'Jamaan')
-        );
-        if (firstType !== 'Meethas' || saladBeforeJamaan) {
-          console.warn('[Thaal] Cultural sequence violation detected — re-ordering dishes.');
-          const PRIORITY: Record<string, number> = { 'Meethas': 0, 'Kharaas': 1, 'Jamaan': 2, 'Salad/Side': 3 };
-          parsedPlan.dishes.sort((a: any, b: any) => {
-            const pa = PRIORITY[a.type] ?? 99;
-            const pb = PRIORITY[b.type] ?? 99;
-            return pa !== pb ? pa - pb : a.sequence - b.sequence;
-          });
-          parsedPlan.dishes.forEach((dish: any, i: number) => { dish.sequence = i + 1; });
-        }
+        const PRIORITY: Record<string, number> = { 'Meethas': 0, 'Kharaas': 1, 'Jamaan': 2, 'Salad/Side': 3 };
+        parsedPlan.dishes.sort((a: any, b: any) => {
+          const pa = PRIORITY[a.type] ?? 99;
+          const pb = PRIORITY[b.type] ?? 99;
+          return pa !== pb ? pa - pb : a.sequence - b.sequence;
+        });
+        parsedPlan.dishes.forEach((dish: any, i: number) => { dish.sequence = i + 1; });
       }
 
       // 2.6: Cross-check forbidden substitutions against dish ingredients
@@ -1048,10 +1042,9 @@ export function ThaalPlanner({
                 <>
                   <button
                     onClick={() => onSavePlan(plan)}
-                    disabled={isArchived}
-                    className={`px-6 py-6 rounded-full border border-brand-gold/30 text-brand-gold text-[10px] uppercase font-bold tracking-widest hover:bg-brand-gold/10 transition-all flex items-center gap-2 ${isArchived ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className="px-6 py-6 rounded-full border border-brand-gold/30 text-brand-gold text-[10px] uppercase font-bold tracking-widest hover:bg-brand-gold/10 transition-all flex items-center gap-2"
                   >
-                    <Library className="w-4 h-4" /> {isArchived ? 'Plan Archived' : 'Save Thaal'}
+                    <Library className="w-4 h-4" /> {isArchived ? 'Update Archive' : 'Save Thaal'}
                   </button>
                   <button
                     onClick={sharePlan}

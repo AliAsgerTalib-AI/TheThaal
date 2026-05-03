@@ -1,31 +1,27 @@
-import { Menu, X, Search, UtensilsCrossed, Sparkles, ChefHat, Library } from 'lucide-react';
+import { Menu, X, Library } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RitualGauge } from './RitualGauge';
 
 interface NavigationProps {
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
-  onContributeClick: () => void;
   onThaalPlannerClick: () => void;
   onSpicesClick: () => void;
   onTraditionClick: () => void;
   onAboutClick: () => void;
-  onMasterListClick: () => void;
   onHomeClick: () => void;
   onRecipesClick: () => void;
   onArchiveClick: () => void;
   activePlanStage?: number;
 }
 
-export function Navigation({ 
-  isMobileMenuOpen, 
-  setIsMobileMenuOpen, 
-  onContributeClick,
+export function Navigation({
+  isMobileMenuOpen,
+  setIsMobileMenuOpen,
   onThaalPlannerClick,
   onSpicesClick,
   onTraditionClick,
   onAboutClick,
-  onMasterListClick,
   onHomeClick,
   onRecipesClick,
   onArchiveClick,
@@ -48,27 +44,14 @@ export function Navigation({
         </div>
 
         <div className="flex items-center gap-6">
-          <button 
-            onClick={onContributeClick}
-            className="hidden sm:flex items-center gap-2 px-4 py-2 border border-brand-gold/30 text-brand-gold text-[10px] tracking-widest font-bold uppercase transition-all hover:bg-brand-gold/10"
-          >
-            <UtensilsCrossed className="w-3.5 h-3.5" /> Contribute
-          </button>
-          
           <div className="hidden md:flex items-center gap-10 text-[10px] uppercase tracking-[0.2em] font-sans">
-            <button 
-              onClick={onMasterListClick}
-              className="transition-colors hover:text-brand-gold opacity-80 hover:opacity-100 uppercase tracking-widest text-brand-cream font-bold"
-            >
-              Master List
-            </button>
-            <button 
+            <button
               onClick={onAboutClick}
               className="transition-colors hover:text-brand-gold opacity-80 hover:opacity-100 uppercase tracking-widest text-brand-cream font-bold"
             >
               About Us
             </button>
-            <button 
+            <button
               onClick={onArchiveClick}
               className="px-4 py-2 bg-brand-gold/10 border border-brand-gold/20 rounded-full text-brand-gold hover:bg-brand-gold/20 transition-all uppercase tracking-widest font-black flex items-center gap-2"
             >
@@ -94,11 +77,10 @@ export function Navigation({
             className="md:hidden absolute top-20 left-0 right-0 bg-brand-bg border-b border-white/10 p-8 space-y-6 z-[190] glass-nav"
           >
             
-            {['Master List', 'About Us', 'Archive'].map((item) => (
-              <button 
-                key={item} 
+            {['About Us', 'Archive'].map((item) => (
+              <button
+                key={item}
                 onClick={() => {
-                  if (item === 'Master List') onMasterListClick();
                   if (item === 'About Us') onAboutClick();
                   if (item === 'Archive') onArchiveClick();
                   setIsMobileMenuOpen(false);
@@ -108,14 +90,6 @@ export function Navigation({
                 {item}
               </button>
             ))}
-            <div className="pt-6 border-t border-white/5 space-y-4">
-              <button 
-                onClick={() => { onContributeClick(); setIsMobileMenuOpen(false); }}
-                className="flex items-center gap-2 text-brand-gold text-sm tracking-widest font-bold uppercase"
-              >
-                <UtensilsCrossed className="w-4 h-4" /> Contribute
-              </button>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>

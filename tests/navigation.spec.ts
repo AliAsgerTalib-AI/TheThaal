@@ -16,21 +16,19 @@ test.describe('Navigation', () => {
     await expect(logo).toBeVisible();
   });
 
-  test('desktop nav shows Master List, About Us, Archive, Contribute', async ({ page }) => {
+  test('desktop nav shows About Us and Archive', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await expect(page.locator('nav').getByRole('button', { name: /master list/i })).toBeVisible();
     await expect(page.locator('nav').getByRole('button', { name: /about us/i })).toBeVisible();
     await expect(page.locator('nav').getByRole('button', { name: /archive/i })).toBeVisible();
-    await expect(page.locator('nav').getByRole('button', { name: /contribute/i })).toBeVisible();
   });
 
   test('mobile menu toggles open and closed', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const menuButton = page.locator('nav button.md\\:hidden');
     await menuButton.click();
-    await expect(page.getByRole('button', { name: /master list/i }).last()).toBeVisible();
+    await expect(page.getByRole('button', { name: /about us/i }).last()).toBeVisible();
     await menuButton.click();
-    await expect(page.getByRole('button', { name: /master list/i }).last()).not.toBeVisible();
+    await expect(page.getByRole('button', { name: /about us/i }).last()).not.toBeVisible();
   });
 
   test('clicking logo returns to home from another page', async ({ page }) => {

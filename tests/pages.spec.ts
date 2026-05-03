@@ -14,9 +14,8 @@ test.describe('Page navigation', () => {
     await expect(page.getByText('Heritage Intelligence')).toBeVisible();
   });
 
-  test('Master List page opens', async ({ page }) => {
-    await page.locator('nav').getByRole('button', { name: /master list/i }).click();
-    // Master List page should be visible and replace the hero
+  test('Thaal Planner opens from hero CTA', async ({ page }) => {
+    await page.getByRole('button', { name: /orchestrate the symphony/i }).click();
     await expect(page.getByText('Heritage Intelligence')).not.toBeVisible();
   });
 
@@ -27,8 +26,8 @@ test.describe('Page navigation', () => {
 
   test('only one page is open at a time', async ({ page }) => {
     await page.locator('nav').getByRole('button', { name: /about us/i }).click();
-    await page.locator('nav').getByRole('button', { name: /master list/i }).click();
-    // After switching, About should be gone and Master List visible
+    await page.locator('nav').getByRole('button', { name: /archive/i }).click();
+    // After switching, home hero should not be visible
     await expect(page.getByText('Heritage Intelligence')).not.toBeVisible();
   });
 });

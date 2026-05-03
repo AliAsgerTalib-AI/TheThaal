@@ -14,6 +14,18 @@ import { RecipeFormModal } from './components/RecipeFormModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChefHat, Sparkles } from 'lucide-react';
 
+const CULTURAL_PRIORITY: Record<string, number> = { 'Meethas': 0, 'Kharaas': 1, 'Jamaan': 2, 'Salad/Side': 3 };
+function enforceCulturalSequence(plan: ThaalPlan): ThaalPlan {
+  if (!Array.isArray(plan.dishes) || plan.dishes.length === 0) return plan;
+  const dishes = [...plan.dishes].sort((a, b) => {
+    const pa = CULTURAL_PRIORITY[a.type] ?? 99;
+    const pb = CULTURAL_PRIORITY[b.type] ?? 99;
+    return pa !== pb ? pa - pb : a.sequence - b.sequence;
+  });
+  dishes.forEach((d, i) => { d.sequence = i + 1; });
+  return { ...plan, dishes };
+}
+
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -46,13 +58,18 @@ export default function App() {
   // Restore a shared plan from URL hash on first load
   useEffect(() => {
     const hash = window.location.hash;
-    const match = hash.match(/^#plan=(.+)$/);
+    const match = hash.match(/^#plan=([A-Za-z0-9+/=_-]+)$/);
     if (!match) return;
     try {
-      const decoded = JSON.parse(decodeURIComponent(atob(match[1])));
+      // Support both standard and URL-safe base64
+      const b64 = match[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padding = (4 - b64.length % 4) % 4;
+      const padded = b64 + '='.repeat(padding);
+      const decoded = JSON.parse(decodeURIComponent(atob(padded)));
       if (decoded && decoded.id && decoded.dishes) {
-        setThaalPlan(decoded);
-        setThaalCount(Math.round((decoded.guestCount || 8) / 8));
+        const sorted = enforceCulturalSequence(decoded);
+        setThaalPlan(sorted);
+        setThaalCount(Math.round((sorted.guestCount || 8) / 8));
         setIsThaalPlannerOpen(true);
         window.history.replaceState(null, '', window.location.pathname);
       }
@@ -109,7 +126,9 @@ export default function App() {
 
   const handleArchivePlan = (plan: ThaalPlan) => {
     setArchivedPlans(prev => {
-      if (prev.some(p => p.id === plan.id)) return prev;
+      if (prev.some(p => p.id === plan.id)) {
+        return prev.map(p => p.id === plan.id ? plan : p);
+      }
       return [plan, ...prev];
     });
   };
@@ -126,10 +145,9 @@ export default function App() {
     <div className="min-h-screen bg-brand-bg text-brand-cream selection:bg-brand-gold/30">
       <div className="fixed inset-0 immersive-gradient opacity-20 pointer-events-none z-0" />
 
-      <Navigation 
+      <Navigation
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
-        onContributeClick={() => setIsCreateModalOpen(true)}
         onThaalPlannerClick={() => {
           if (!isThaalPlannerOpen) {
             closeAllPages();
@@ -156,11 +174,6 @@ export default function App() {
         onRecipesClick={() => {
           closeAllPages();
           setIsRecipesPageOpen(true);
-          window.scrollTo(0, 0);
-        }}
-        onMasterListClick={() => {
-          closeAllPages();
-          setIsMasterListPageOpen(true);
           window.scrollTo(0, 0);
         }}
         onHomeClick={() => {
@@ -287,7 +300,7 @@ export default function App() {
                 setRecipeInKitchen(recipe);
               }}
               onPlanSelect={(plan) => {
-                setThaalPlan(plan);
+                setThaalPlan(enforceCulturalSequence(plan));
                 setThaalCount(plan.guestCount / 8);
                 setIsArchivePageOpen(false);
                 setIsThaalPlannerOpen(true);

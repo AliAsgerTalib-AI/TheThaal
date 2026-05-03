@@ -86,7 +86,7 @@ export function RecipeModal({ recipe, onClose, onStartKitchenMode, onArchive, is
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-5xl max-h-[90vh] overflow-hidden border border-white/10 bg-[#1A1816] shadow-2xl"
+        className="relative w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-white/10 bg-[#1A1816] shadow-2xl"
       >
         <button
           onClick={onClose}
@@ -95,7 +95,7 @@ export function RecipeModal({ recipe, onClose, onStartKitchenMode, onArchive, is
           <X className="h-6 w-6" />
         </button>
 
-        <div className="flex flex-col h-full overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="p-8 md:p-12">
             <div className="mb-8">
               <div className="mb-4 flex items-center gap-3">

@@ -130,7 +130,7 @@ export function ArchivePage({
                         onClick={() => setSelectedRecipe(recipe)}
                         className="text-brand-gold text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 group/btn"
                       >
-                        Enrich View <ChevronRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-1" />
+                        View recipe <ChevronRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-1" />
                       </button>
                     </div>
                   </div>
