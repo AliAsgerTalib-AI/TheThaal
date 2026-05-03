@@ -852,6 +852,7 @@ export function ThaalPlanner({
       // Sanitise JSON response
       const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsedPlan = JSON.parse(jsonStr);
+      parsedPlan.id = crypto.randomUUID();
       parsedPlan.location = location;
       parsedPlan.month = month;
 

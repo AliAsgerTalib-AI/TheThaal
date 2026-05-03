@@ -66,7 +66,8 @@ export default function App() {
       const padding = (4 - b64.length % 4) % 4;
       const padded = b64 + '='.repeat(padding);
       const decoded = JSON.parse(decodeURIComponent(atob(padded)));
-      if (decoded && decoded.id && decoded.dishes) {
+      if (decoded && Array.isArray(decoded.dishes) && decoded.dishes.length > 0) {
+        if (!decoded.id) decoded.id = crypto.randomUUID();
         const sorted = enforceCulturalSequence(decoded);
         setThaalPlan(sorted);
         setThaalCount(Math.round((sorted.guestCount || 8) / 8));
@@ -126,7 +127,7 @@ export default function App() {
 
   const handleArchivePlan = (plan: ThaalPlan) => {
     setArchivedPlans(prev => {
-      if (prev.some(p => p.id === plan.id)) {
+      if (plan.id && prev.some(p => p.id === plan.id)) {
         return prev.map(p => p.id === plan.id ? plan : p);
       }
       return [plan, ...prev];
@@ -301,7 +302,7 @@ export default function App() {
               }}
               onPlanSelect={(plan) => {
                 setThaalPlan(enforceCulturalSequence(plan));
-                setThaalCount(plan.guestCount / 8);
+                setThaalCount(Math.round((plan.guestCount || 8) / 8));
                 setIsArchivePageOpen(false);
                 setIsThaalPlannerOpen(true);
               }}
